@@ -1,0 +1,54 @@
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+.head .title { font-size: 32rpx; font-weight: 600; }
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+.card-head .h2 { margin: 0; }
+
+.legend { display: flex; align-items: center; font-size: 22rpx; color: #7a8a80; }
+.lg-dot { width: 16rpx; height: 16rpx; border-radius: 4rpx; margin: 0 6rpx 0 12rpx; }
+.lg-act { background: #1f6f4a; }
+.lg-est { background: #b9d9c6; }
+.lg-txt { line-height: 1; }
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  height: 300rpx;
+  padding: 12rpx 0 0;
+}
+.bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+.bar-stack {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.bar { width: 26rpx; border-radius: 6rpx 6rpx 0 0; }
+.bar-act { background: #1f6f4a; }
+.bar-est { background: #b9d9c6; margin-right: 6rpx; }
+.bar-season { font-size: 22rpx; color: #7a8a80; margin-top: 10rpx; }
+
+.list-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f3f0;
+}
+.list-item:last-child { border-bottom: none; }
+.li-title { font-size: 28rpx; }
+.li-desc { font-size: 24rpx; color: #7a8a80; margin-top: 4rpx; }

@@ -1,0 +1,32 @@
+{
+  "pages": [
+    "pages/todo/todo",
+    "pages/plots/plots",
+    "pages/plot/plot",
+    "pages/scan/scan",
+    "pages/form/form",
+    "pages/trace/trace",
+    "pages/batches/batches"
+  ],
+  "window": {
+    "navigationBarTitleText": "智慧果园管家",
+    "navigationBarBackgroundColor": "#1f6f4a",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f4f7f4",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#7a8a80",
+    "selectedColor": "#1f6f4a",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/todo/todo", "text": "今日待办" },
+      { "pagePath": "pages/plots/plots", "text": "我的果园" },
+      { "pagePath": "pages/scan/scan", "text": "拍照识别" },
+      { "pagePath": "pages/form/form", "text": "快速填报" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

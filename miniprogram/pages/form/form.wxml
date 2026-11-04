@@ -1,0 +1,58 @@
+<view class="wrap">
+  <view class="field">
+    <text class="label">地块</text>
+    <picker mode="selector" range="{{plotNames}}" value="{{plotIndex}}" bindchange="onPlotChange">
+      <view class="picker-value">
+        <text>{{plotNames[plotIndex] || '请选择地块'}}</text>
+        <text class="picker-arrow">›</text>
+      </view>
+    </picker>
+  </view>
+
+  <view class="card">
+    <view class="h2">农事记录填报</view>
+    <view class="field">
+      <text class="label">农事类型</text>
+      <picker mode="selector" range="{{opTypes}}" value="{{opIndex}}" bindchange="onOpTypeChange">
+        <view class="picker-value">
+          <text>{{opTypes[opIndex]}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">操作人</text>
+      <input value="{{operator}}" bindinput="onOperatorInput" placeholder="操作人" />
+    </view>
+    <view class="field">
+      <text class="label">备注</text>
+      <input value="{{remark}}" bindinput="onRemarkInput" placeholder="如：复合肥 40kg 环状沟施" />
+    </view>
+    <view class="btn block" bindtap="submitOperation">提交农事记录</view>
+    <view wx:if="{{opMsg}}" class="alert {{opOk ? 'good' : 'critical'}} mt">
+      <view class="al-detail">{{opMsg}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="h2">用药台账录入（含 CAS 校验）</view>
+    <view class="field">
+      <text class="label">农药名称</text>
+      <picker mode="selector" range="{{pesticideNames}}" value="{{pestiIndex}}" bindchange="onPestiChange">
+        <view class="picker-value">
+          <text>{{pestiName || '请选择农药'}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+      <view class="small muted mt">CAS：{{pestiCas}} · 安全间隔期 {{pestiSafe}} 天</view>
+    </view>
+    <view class="field">
+      <text class="label">距预计采收天数（可选）</text>
+      <input type="number" value="{{pestiDays}}" bindinput="onPestiDaysInput" placeholder="如 5" />
+    </view>
+    <view class="btn block" bindtap="submitPesticide">提交用药记录</view>
+    <view wx:if="{{pstMsg}}" class="alert {{pstOk ? 'good' : 'warning'}} mt">
+      <view class="al-detail">{{pstMsg}}</view>
+    </view>
+  </view>
+</view>

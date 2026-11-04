@@ -1,0 +1,40 @@
+.hero-card {
+  background: linear-gradient(135deg, #1f6f4a, #2f8a5c);
+  color: #ffffff;
+}
+.hero-card .pill.neutral { background: rgba(255, 255, 255, 0.18); color: #ffffff; }
+.hero-card .small.muted { color: rgba(255, 255, 255, 0.8); }
+
+.t-code { font-size: 34rpx; font-weight: 700; letter-spacing: 1rpx; }
+
+.qr-wrap { display: flex; align-items: center; }
+.qr {
+  width: 180rpx;
+  height: 180rpx;
+  background: #ffffff;
+  border-radius: 12rpx;
+  padding: 8rpx;
+  margin-right: 20rpx;
+}
+
+.seg-head {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 10rpx;
+  display: flex;
+  align-items: center;
+}
+.seg-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #1f6f4a;
+  color: #ffffff;
+  font-size: 24rpx;
+  margin-right: 12rpx;
+}
+
+.tip { text-align: center; padding: 10rpx 0 30rpx; }

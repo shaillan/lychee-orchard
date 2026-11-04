@@ -1,0 +1,23 @@
+.row { align-items: flex-start; }
+.row .half { flex: 1; }
+.row .half + .half { margin-left: 16rpx; }
+
+.batch-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+.b-main { flex: 1; margin-right: 16rpx; }
+.b-code { font-size: 30rpx; font-weight: 600; letter-spacing: 1rpx; }
+
+.batch-body { display: flex; align-items: center; }
+.qr {
+  width: 180rpx;
+  height: 180rpx;
+  background: #ffffff;
+  border: 1rpx solid #e5ece7;
+  border-radius: 12rpx;
+  padding: 8rpx;
+  margin-right: 20rpx;
+}

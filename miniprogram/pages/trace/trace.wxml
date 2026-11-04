@@ -1,0 +1,77 @@
+<view class="wrap">
+  <view class="card">
+    <view class="h2">一物一码 · 查询溯源</view>
+    <view class="field">
+      <text class="label">溯源码</text>
+      <input value="{{code}}" bindinput="onInput" placeholder="如 LZ-P03-20260702-0001" />
+    </view>
+    <view class="row">
+      <view class="btn ghost" bindtap="scan">扫一扫</view>
+      <view class="btn" bindtap="load">查询</view>
+    </view>
+    <view class="mt small muted">演示码：LZ-P03-20260702-0001（已放行）· LZ-P01-20260708-0002（已拦截）</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="card muted">查询中…</view>
+  <view wx:elif="{{error}}" class="alert critical"><view class="al-detail">{{error}}</view></view>
+
+  <block wx:elif="{{trace}}">
+    <view class="card hero-card">
+      <view class="t-code">{{trace.code}}</view>
+      <view class="mt">
+        <text class="pill {{trace.statusClass}}">{{trace.statusText}}</text>
+        <text class="pill neutral">{{trace.variety}}</text>
+      </view>
+      <view wx:if="{{trace.status !== 'released'}}" class="alert critical mt">
+        <view class="al-title">批次已拦截</view>
+        <view class="al-detail">{{trace.block_reason}}</view>
+      </view>
+      <view class="qr-wrap mt">
+        <image class="qr" src="{{qrcodeUrl}}" mode="aspectFit" show-menu-by-longpress></image>
+        <view class="small muted">长按二维码可保存 / 识别<br/>扫码即可查看全过程</view>
+      </view>
+    </view>
+
+    <view class="card seg">
+      <view class="seg-head"><text class="seg-no">1</text>种植 · 谁种的</view>
+      <view class="kv"><text class="k">果园</text><text class="v">{{trace.planting.orchard}}</text></view>
+      <view class="kv"><text class="k">地块</text><text class="v">{{trace.planting.plot_name}}</text></view>
+      <view class="kv"><text class="k">位置</text><text class="v">{{trace.planting.location}}</text></view>
+      <view class="kv"><text class="k">品种</text><text class="v">{{trace.planting.variety}}</text></view>
+      <view class="kv"><text class="k">定植年份</text><text class="v">{{trace.planting.planting_year}}</text></view>
+    </view>
+
+    <view class="card seg">
+      <view class="seg-head"><text class="seg-no">2</text>管护 · 怎么管的</view>
+      <view class="kv"><text class="k">关键农事记录</text><text class="v">{{trace.care.operations.length}} 条</text></view>
+      <view wx:for="{{trace.care.operations}}" wx:key="operation_date" class="kv">
+        <text class="k">{{item.operation_type}}</text>
+        <text class="v">{{item.operation_date}} · {{item.operator}}</text>
+      </view>
+      <view class="kv"><text class="k">用药次数</text><text class="v">{{trace.care.pesticide_count}} 次</text></view>
+      <view wx:if="{{trace.care.last_pesticide}}" class="kv">
+        <text class="k">最后一次用药</text>
+        <text class="v">{{trace.care.last_pesticide.pesticide_name}} · {{trace.care.last_pesticide.apply_time}}</text>
+      </view>
+      <view class="kv"><text class="k">安全间隔期状态</text><text class="v">{{trace.care.safety_state}}</text></view>
+    </view>
+
+    <view class="card seg">
+      <view class="seg-head"><text class="seg-no">3</text>销售 · 检测是否合格</view>
+      <view class="kv"><text class="k">采收日期</text><text class="v">{{trace.harvest_date}}</text></view>
+      <view class="kv"><text class="k">农残检测</text><text class="v">{{trace.sales.detection_report}}</text></view>
+      <view class="kv"><text class="k">包装</text><text class="v">{{trace.sales.packaging}}</text></view>
+      <view class="kv"><text class="k">物流</text><text class="v">{{trace.sales.logistics || '—'}}</text></view>
+    </view>
+
+    <view wx:if="{{trace.hash_chain.length}}" class="card seg">
+      <view class="seg-head"><text class="seg-no">🔗</text>哈希存证链</view>
+      <view wx:for="{{trace.hash_chain}}" wx:key="record_hash" class="kv">
+        <text class="k">#{{index + 1}} {{item.payload_summary}}</text>
+        <text class="v small muted">{{item.short}}…</text>
+      </view>
+    </view>
+
+    <view class="small muted tip">溯源数据来自地块档案与用药台账，哈希链保证不可篡改</view>
+  </block>
+</view>

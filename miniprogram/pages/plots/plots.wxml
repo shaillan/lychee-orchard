@@ -1,0 +1,32 @@
+<view class="wrap">
+  <view class="h2">果树分区</view>
+  <view class="zone-map" wx:if="{{plots.length}}">
+    <view
+      wx:for="{{plots}}"
+      wx:key="id"
+      class="zone {{item.safe ? 'z-good' : 'z-warn'}}"
+      bindtap="open"
+      data-id="{{item.id}}"
+    >
+      <view class="z-code">{{item.code}}</view>
+      <view class="z-name">{{item.variety}}</view>
+      <view class="z-tree">{{item.tree_count}} 株</view>
+    </view>
+  </view>
+
+  <view class="h2 mt">地块档案</view>
+  <view wx:if="{{loading}}" class="card muted">加载中…</view>
+  <view wx:elif="{{error}}" class="card error">{{error}}</view>
+  <block wx:else>
+    <view wx:for="{{plots}}" wx:key="id" class="card" bindtap="open" data-id="{{item.id}}">
+      <view class="card-head">
+        <text class="title">{{item.name}}</text>
+        <text class="pill {{item.safeClass}}">{{item.safeText}}</text>
+      </view>
+      <view class="kv"><text class="k">品种</text><text class="v">{{item.variety}}</text></view>
+      <view class="kv"><text class="k">面积 / 株数</text><text class="v">{{item.area_mu}} 亩 · {{item.tree_count}} 株</text></view>
+      <view class="kv"><text class="k">定植年份</text><text class="v">{{item.planting_year}}</text></view>
+      <view class="kv"><text class="k">位置</text><text class="v">{{item.location}}</text></view>
+    </view>
+  </block>
+</view>

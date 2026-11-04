@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+
+# 运行数据
+data/*.db
+data/*.db-wal
+data/*.db-shm
+server.log
+static/uploads/
+
+# 小程序开发者工具本地配置
+miniprogram/project.private.config.json

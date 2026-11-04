@@ -1,0 +1,43 @@
+.photo-box {
+  background: #f7faf8;
+  border: 2rpx dashed #cfe3d7;
+  border-radius: 16rpx;
+  height: 320rpx;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo { width: 100%; height: 100%; }
+
+.photo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #6c7d72;
+  font-size: 26rpx;
+}
+.photo-empty .cam { font-size: 64rpx; margin-bottom: 10rpx; }
+.photo-empty .small { margin-top: 6rpx; }
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+.head .title { font-size: 30rpx; font-weight: 600; }
+
+.pre {
+  white-space: pre-wrap;
+  font-size: 26rpx;
+  color: #2c3a31;
+  line-height: 1.7;
+  background: #f7faf8;
+  border-radius: 12rpx;
+  padding: 20rpx;
+}
+
+.pills { line-height: 2.2; }
+.pills .pill { margin: 0 10rpx 10rpx 0; }

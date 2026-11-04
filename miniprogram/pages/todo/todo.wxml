@@ -1,0 +1,33 @@
+<view class="wrap">
+  <view class="hero">
+    <view class="hero-title">智慧果园管家</view>
+    <view class="hero-sub">东风荔枝果园 · 从田间到餐桌</view>
+  </view>
+
+  <view class="quick">
+    <view class="quick-item" bindtap="scan">
+      <text class="qi">⌗</text>
+      <text>扫码溯源</text>
+    </view>
+    <view class="quick-item" bindtap="goBatches">
+      <text class="qi">▣</text>
+      <text>批次二维码</text>
+    </view>
+    <view class="quick-item" bindtap="goTrace">
+      <text class="qi">⌕</text>
+      <text>输入溯源码</text>
+    </view>
+  </view>
+
+  <view class="h2">今日待办</view>
+
+  <view wx:if="{{loading}}" class="card muted">加载中…</view>
+  <view wx:elif="{{error}}" class="card error">{{error}}</view>
+  <block wx:else>
+    <view wx:if="{{items.length === 0}}" class="card empty">今日暂无待办，果园状态正常</view>
+    <view wx:for="{{items}}" wx:key="title" class="alert {{item.level}}">
+      <view class="al-title">{{item.title}}</view>
+      <view class="al-detail">{{item.detail}}</view>
+    </view>
+  </block>
+</view>

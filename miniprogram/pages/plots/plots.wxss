@@ -1,0 +1,30 @@
+.zone-map {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -8rpx;
+}
+
+.zone {
+  width: calc(33.33% - 16rpx);
+  margin: 8rpx;
+  border-radius: 16rpx;
+  padding: 22rpx 0;
+  text-align: center;
+  color: #ffffff;
+}
+
+.zone.z-good { background: linear-gradient(135deg, #2f8a5c, #43a86f); }
+.zone.z-warn { background: linear-gradient(135deg, #c07a1e, #d99a3c); }
+
+.z-code { font-size: 30rpx; font-weight: 700; }
+.z-name { font-size: 24rpx; opacity: 0.95; }
+.z-tree { font-size: 22rpx; opacity: 0.8; }
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+
+.card-head .title { font-size: 30rpx; font-weight: 600; }

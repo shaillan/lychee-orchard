@@ -1,0 +1,66 @@
+<view class="wrap">
+  <view class="card">
+    <view class="h2">拍照识别病虫害</view>
+    <view class="photo-box" bindtap="choosePhoto">
+      <image wx:if="{{preview}}" src="{{preview}}" mode="aspectFill" class="photo"></image>
+      <view wx:else class="photo-empty">
+        <text class="cam">📷</text>
+        <text>点击拍照 / 从相册选择</text>
+        <text class="small muted">上传前自动压缩至 1080p</text>
+      </view>
+    </view>
+
+    <view class="field mt">
+      <text class="label">地块</text>
+      <picker mode="selector" range="{{plotNames}}" value="{{plotIndex}}" bindchange="onPlotChange">
+        <view class="picker-value">
+          <text>{{plotNames[plotIndex] || '请选择地块'}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="label">距预计采收天数（可选，用于安全间隔期校验）</text>
+      <input type="number" placeholder="如 5 表示 5 天后采收" value="{{days}}" bindinput="onDaysInput" />
+    </view>
+
+    <view wx:if="{{loading}}" class="btn block" disabled>识别中…</view>
+    <view wx:else class="btn block" bindtap="choosePhoto">拍照 / 选图识别</view>
+    <view wx:if="{{error}}" class="alert critical mt"><view class="al-detail">{{error}}</view></view>
+  </view>
+
+  <view class="card">
+    <view class="h2">演示模式（无需图片）</view>
+    <view class="field">
+      <text class="label">选择病虫害类别</text>
+      <picker mode="selector" range="{{pestNames}}" value="{{pestIndex}}" bindchange="onPestChange">
+        <view class="picker-value">
+          <text>{{pestNames[pestIndex] || '请选择'}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+    </view>
+    <view class="btn ghost block" bindtap="runDemo">生成识别结果与防治建议</view>
+  </view>
+
+  <view wx:if="{{result}}" class="card">
+    <view class="head">
+      <text class="title">识别结果</text>
+      <text class="pill {{result.riskClass}}">{{result.pest_class}}</text>
+    </view>
+    <view class="kv"><text class="k">置信度</text><text class="v">{{result.confidencePct}}%</text></view>
+    <view class="kv"><text class="k">风险等级</text><text class="v">{{result.suggestion.risk}}（{{result.suggestion.kind}}）</text></view>
+    <view class="kv"><text class="k">识别来源</text><text class="v">{{result.sourceLabel}}</text></view>
+
+    <view class="pre mt">{{result.suggestion.text}}</view>
+
+    <view wx:if="{{result.pesticides.length}}" class="pills mt">
+      <text wx:for="{{result.pesticides}}" wx:key="name" class="pill neutral">{{item.name}} · {{item.safe_interval_days}}天</text>
+    </view>
+
+    <view wx:for="{{result.warnings}}" wx:key="*this" class="alert serious mt">
+      <view class="al-detail">{{item}}</view>
+    </view>
+  </view>
+</view>

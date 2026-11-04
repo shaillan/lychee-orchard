@@ -1,0 +1,55 @@
+<view class="wrap">
+  <view class="card">
+    <view class="h2">生成采收批次</view>
+    <view class="field">
+      <text class="label">地块</text>
+      <picker mode="selector" range="{{plotNames}}" value="{{plotIndex}}" bindchange="onPlotChange">
+        <view class="picker-value">
+          <text>{{plotNames[plotIndex] || '请选择地块'}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+    </view>
+    <view class="row">
+      <view class="field half">
+        <text class="label">采收日期</text>
+        <picker mode="date" value="{{harvestDate}}" bindchange="onDateChange">
+          <view class="picker-value"><text>{{harvestDate}}</text></view>
+        </picker>
+      </view>
+      <view class="field half">
+        <text class="label">包装序号</text>
+        <input type="number" value="{{seq}}" bindinput="onSeqInput" />
+      </view>
+    </view>
+    <view class="btn block" bindtap="create">生成批次并锁定档案</view>
+    <view wx:if="{{createMsg}}" class="alert {{createOk ? 'good' : 'warning'}} mt">
+      <view class="al-detail">{{createMsg}}</view>
+    </view>
+    <view class="small muted mt">安全间隔期未满的批次会被拦截，不生成销售溯源码。</view>
+  </view>
+
+  <view class="h2">批次列表</view>
+  <view wx:if="{{loading}}" class="card muted">加载中…</view>
+  <view wx:elif="{{error}}" class="card error">{{error}}</view>
+  <block wx:else>
+    <view wx:for="{{batches}}" wx:key="id" class="card">
+      <view class="batch-head">
+        <view class="b-main">
+          <view class="b-code">{{item.batch_no}}</view>
+          <view class="small muted">{{item.plot_name}} · {{item.variety}} · {{item.harvest_date}}</view>
+        </view>
+        <text class="pill {{item.statusClass}}">{{item.statusText}}</text>
+      </view>
+
+      <view wx:if="{{item.status === 'released'}}" class="batch-body">
+        <image class="qr" src="{{item.qr}}" mode="aspectFit" show-menu-by-longpress></image>
+        <view class="small muted">一物一码 · 长按可保存<br/>扫码查看「种植—管护—销售」全过程</view>
+      </view>
+      <view wx:else class="alert critical mt">
+        <view class="al-title">未生成销售溯源码</view>
+        <view class="al-detail">{{item.block_reason}}</view>
+      </view>
+    </view>
+  </block>
+</view>

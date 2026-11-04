@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>农事数据看板 · 智慧果园管家</title>
+<link rel="stylesheet" href="/assets/css/app.css">
+<script src="/static/echarts.min.js"></script>
+</head>
+<body>
+<div class="dash-shell">
+  <div class="topbar" style="position:static; margin-bottom:16px; border:1px solid var(--gridline); border-radius:12px;">
+    <div><h1>农事数据看板</h1><div class="sub">产量 · 用药 · 虫害 三条线</div></div>
+    <a class="pill neutral" href="/">← 果农端</a>
+  </div>
+
+  <div class="dash-grid" id="tiles"></div>
+  <div id="alerts"></div>
+
+  <div class="dash-grid-2">
+    <div class="chart-card"><h3>产量趋势（分地块）</h3><div class="chart-box" id="cYield"></div></div>
+    <div class="chart-card"><h3>用药趋势（按药剂类别堆叠）</h3><div class="chart-box" id="cPest"></div></div>
+    <div class="chart-card"><h3>虫害趋势（近12周）</h3><div class="chart-box" id="cPestTrend"></div></div>
+    <div class="chart-card"><h3>虫害热力分布（近90天）</h3><div class="chart-box" id="cHeat"></div></div>
+  </div>
+</div>
+
+<script>
+const PALETTE = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300'];
+const BLUE_RAMP = ['#cde2fb','#b7d3f6','#9ec5f4','#86b6ef','#6da7ec','#5598e7','#3987e5','#2a78d6','#1c5cab','#184f95'];
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const charts = {};
+function mk(id){ charts[id] = echarts.init(document.getElementById(id)); }
+function base(){
+  return {
+    textStyle: { color: css('--text-secondary'), fontFamily: 'system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif' },
+    grid: { left: 48, right: 24, top: 40, bottom: 32, containLabel: false },
+    tooltip: { trigger: 'axis', backgroundColor: css('--surface-1'), borderColor: css('--gridline'), textStyle: { color: css('--text-primary') } },
+  };
+}
+function axis(baseOpt){
+  return {
+    xAxis: { type:'category', axisLine:{ lineStyle:{ color: css('--baseline') } }, axisTick:{ show:false }, axisLabel:{ color: css('--muted') }, splitLine:{ show:false } },
+    yAxis: { type:'value', axisLine:{ show:false }, axisTick:{ show:false }, axisLabel:{ color: css('--muted') }, splitLine:{ lineStyle:{ color: css('--gridline') } } },
+    ...baseOpt,
+  };
+}
+
+async function get(u){ const r = await fetch(u); return r.json(); }
+
+async function loadSummary(){
+  const s = await get('/api/dashboard/summary');
+  $('#tiles').innerHTML = `
+    <div class="tile"><div class="t-val">${s.plots}<span class="small muted"> 个地块 · ${s.area_mu} 亩</span></div><div class="t-label">果园规模 · ${s.trees} 株</div></div>
+    <div class="tile"><div class="t-val">${(s.yield_2026_kg/1000).toFixed(1)}<span class="small muted"> t</span></div><div class="t-label">2026 年总产量</div></div>
+    <div class="tile"><div class="t-val">${s.pesticide_applications_30d}<span class="small muted"> 次</span></div><div class="t-label">近 30 天用药</div></div>
+    <div class="tile"><div class="t-val">${s.recognitions_7d}<span class="small muted"> 次</span></div><div class="t-label">近 7 天识别</div></div>`;
+
+  const alertHtml = s.unsafe_plots.map(u=>`
+    <div class="alert critical"><div class="al-title">${u.plot}：用药安全间隔期内</div>
+    <div class="al-detail">${u.message}</div></div>`).join('');
+  const blocked = s.blocked_batches ? `<div class="alert serious"><div class="al-title">${s.blocked_batches} 个批次被拦截</div><div class="al-detail">安全间隔期未满，暂不能生成销售溯源码</div></div>` : '';
+  $('#alerts').innerHTML = alertHtml + blocked;
+}
+
+async function loadYield(){
+  const d = await get('/api/dashboard/yield-trend');
+  const opt = axis({
+    color: PALETTE,
+    legend: { data: d.series.map(s=>s.name), top: 0, textStyle:{ color: css('--text-secondary') } },
+    xAxis: { type:'category', data: d.seasons },
+    series: d.series.map(s=>({
+      name: s.name, type:'line', data: s.actual, smooth: true,
+      symbol: 'circle', symbolSize: 6, showSymbol: true, lineStyle: { width: 2 },
+      label: { show: true, position: 'top', formatter: p=> p.dataIndex===d.seasons.length-1 ? (p.value/1000).toFixed(1)+'t' : '', color: css('--text-secondary'), fontSize: 11 },
+    })),
+  });
+  charts.cYield.setOption(opt);
+}
+
+async function loadPesticide(){
+  const d = await get('/api/dashboard/pesticide-trend');
+  const opt = axis({
+    color: PALETTE,
+    legend: { data: d.categories, top: 0, textStyle:{ color: css('--text-secondary') } },
+    xAxis: { type:'category', data: d.months },
+    yAxis: { type:'value', name:'次' },
+    series: d.series.map(s=>({
+      name: s.name, type:'bar', stack:'total', data: s.data, barWidth: 18,
+      itemStyle: { borderRadius: [0,0,0,0] }, emphasis: { focus:'series' },
+    })),
+  });
+  // 相邻堆叠段之间留 2px 表面间隙
+  opt.series.forEach(s=>{ s.itemStyle.borderWidth = 2; s.itemStyle.borderColor = css('--surface-1'); });
+  charts.cPest.setOption(opt);
+}
+
+async function loadPestTrend(){
+  const d = await get('/api/dashboard/pest-trend');
+  const opt = axis({
+    color: PALETTE,
+    legend: { data: d.series.map(s=>s.name), top: 0, textStyle:{ color: css('--text-secondary') } },
+    xAxis: { type:'category', data: d.weeks },
+    yAxis: { type:'value', name:'识别次数' },
+    series: d.series.map(s=>({
+      name: s.name, type:'line', data: s.data, smooth: true,
+      symbol: 'circle', symbolSize: 5, showSymbol: false, lineStyle: { width: 2 },
+    })),
+  });
+  charts.cPestTrend.setOption(opt);
+}
+
+async function loadHeat(){
+  const d = await get('/api/dashboard/pest-heatmap');
+  const max = Math.max(1, ...d.data.map(x=>x[2]));
+  const opt = {
+    textStyle: { color: css('--text-secondary'), fontFamily: 'system-ui, sans-serif' },
+    grid: { left: 90, right: 40, top: 30, bottom: 70 },
+    xAxis: { type:'category', data: d.plots, splitArea:{ show:true }, axisLine:{ show:false }, axisTick:{ show:false }, axisLabel:{ color: css('--muted') } },
+    yAxis: { type:'category', data: d.pests, splitArea:{ show:true }, axisLine:{ show:false }, axisTick:{ show:false }, axisLabel:{ color: css('--muted') } },
+    visualMap: { min:0, max:max, calculable:true, orient:'horizontal', left:'center', bottom:0, inRange:{ color: BLUE_RAMP }, textStyle:{ color: css('--muted') } },
+    tooltip: { backgroundColor: css('--surface-1'), borderColor: css('--gridline'), textStyle:{ color: css('--text-primary') } },
+    series: [{ type:'heatmap', data: d.data, label:{ show:true, color: css('--text-primary'), fontSize: 10 } }],
+  };
+  charts.cHeat.setOption(opt);
+}
+
+function renderAll(){
+  ['cYield','cPest','cPestTrend','cHeat'].forEach(mk);
+  loadSummary(); loadYield(); loadPesticide(); loadPestTrend(); loadHeat();
+  window.addEventListener('resize', ()=>Object.values(charts).forEach(c=>c.resize()));
+}
+renderAll();
+</script>
+</body>
+</html>

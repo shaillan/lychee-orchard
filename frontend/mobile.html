@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>智慧果园管家</title>
+<link rel="stylesheet" href="/assets/css/app.css">
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div>
+      <h1>智慧果园管家</h1>
+      <div class="sub">东风荔枝果园 · 从田间到餐桌</div>
+    </div>
+    <a class="pill neutral" href="/trace?code=LZ-P03-20260702-0001" style="text-decoration:none;margin-right:8px">溯源</a>
+    <a class="pill neutral" href="/dashboard" style="text-decoration:none">看板</a>
+  </div>
+
+  <div class="content">
+    <!-- 今日待办 -->
+    <div id="view-todo"></div>
+    <!-- 我的果园 -->
+    <div id="view-plots" class="hidden"></div>
+    <!-- 拍照识别 -->
+    <div id="view-scan" class="hidden"></div>
+    <!-- 快速填报 -->
+    <div id="view-form" class="hidden"></div>
+  </div>
+
+  <div class="tabbar">
+    <button class="active" data-tab="todo"><span class="ico">📋</span>今日待办</button>
+    <button data-tab="plots"><span class="ico">🌳</span>我的果园</button>
+    <button data-tab="scan"><span class="ico">📷</span>拍照识别</button>
+    <button data-tab="form"><span class="ico">✍️</span>快速填报</button>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const api = {
+  async get(u){ const r = await fetch(u); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); },
+  async post(u, body, isForm){ const r = await fetch(u, { method:'POST', headers: isForm?undefined:{'Content-Type':'application/json'}, body: isForm?body:JSON.stringify(body) }); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); }
+};
+const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const levelCls = { good:'good', warning:'warning', serious:'serious', critical:'critical' };
+
+function switchTab(tab){
+  $$('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  ['todo','plots','scan','form'].forEach(t=>$('#view-'+t).classList.toggle('hidden', t!==tab));
+  if(tab==='todo') loadTodos();
+  if(tab==='plots') loadPlots();
+  if(tab==='scan') loadPests();
+  if(tab==='form') loadFormPlots();
+}
+$$('.tabbar button').forEach(b=>b.addEventListener('click', ()=>switchTab(b.dataset.tab)));
+
+/* ---------- 今日待办 ---------- */
+async function loadTodos(){
+  const el = $('#view-todo');
+  try {
+    const items = await api.get('/api/todos');
+    el.innerHTML = items.map(i=>`
+      <div class="alert ${levelCls[i.level]||'neutral'}">
+        <div class="al-title">${esc(i.title)}</div>
+        <div class="al-detail">${esc(i.detail)}</div>
+      </div>`).join('');
+  } catch(e){ el.innerHTML = `<div class="card">加载失败：${esc(e.message)}</div>`; }
+}
+
+/* ---------- 我的果园 ---------- */
+async function loadPlots(){
+  const el = $('#view-plots');
+  try {
+    const plots = await api.get('/api/plots');
+    el.innerHTML = plots.map(p=>{
+      const s = p.safety;
+      const pill = s.safe ? '<span class="pill good"><span class="dot"></span>可采收</span>'
+        : `<span class="pill critical"><span class="dot"></span>还需 ${s.remaining_days} 天</span>`;
+      return `<div class="card" style="cursor:pointer" onclick="openPlot(${p.id})">
+        <h2>${esc(p.name)} ${pill}</h2>
+        <div class="kv"><span class="k">品种</span><span class="v">${esc(p.variety)}</span></div>
+        <div class="kv"><span class="k">面积 / 株数</span><span class="v">${p.area_mu} 亩 · ${p.tree_count} 株</span></div>
+        <div class="kv"><span class="k">定植年份</span><span class="v">${p.planting_year}</span></div>
+        <div class="kv"><span class="k">位置</span><span class="v">${esc(p.location)}</span></div>
+      </div>`;
+    }).join('');
+  } catch(e){ el.innerHTML = `<div class="card">加载失败：${esc(e.message)}</div>`; }
+}
+
+async function openPlot(id){
+  const el = $('#view-plots');
+  el.innerHTML = '<div class="card">加载中…</div>';
+  try {
+    const p = await api.get('/api/plots/'+id);
+    const s = p.safety;
+    const ops = p.operations.slice(0,8).map(o=>`<div class="list-item"><div class="li-main"><div class="li-title">${esc(o.operation_type)}</div><div class="li-desc">${esc(o.operator)} · ${o.operation_date}</div></div></div>`).join('');
+    const psts = p.pesticides.slice(0,5).map(r=>`<div class="list-item"><div class="li-main"><div class="li-title">${esc(r.pesticide_name)}</div><div class="li-desc">${r.apply_time} · 安全间隔期 ${r.safe_interval_days} 天</div></div></div>`).join('');
+    el.innerHTML = `
+      <button class="btn ghost small" onclick="loadPlots()">← 返回</button>
+      <div class="card mt">
+        <h2>${esc(p.name)} <span class="pill ${s.safe?'good':'critical'}"><span class="dot"></span>${s.safe?'可采收':'间隔期内'}</span></h2>
+        <div class="kv"><span class="k">品种</span><span class="v">${esc(p.variety)}</span></div>
+        <div class="kv"><span class="k">面积 / 株数</span><span class="v">${p.area_mu} 亩 · ${p.tree_count} 株</span></div>
+        <div class="kv"><span class="k">位置</span><span class="v">${esc(p.location)}</span></div>
+        ${s.safe?'':`<div class="alert critical mt"><div class="al-title">用药安全间隔期内</div><div class="al-detail">${esc(s.message)}</div></div>`}
+      </div>
+      <div class="card"><h2>最近农事记录</h2>${ops||'<div class="muted">暂无记录</div>'}</div>
+      <div class="card"><h2>最近用药台账</h2>${psts||'<div class="muted">暂无记录</div>'}</div>`;
+  } catch(e){ el.innerHTML = `<div class="card">加载失败：${esc(e.message)}</div>`; }
+}
+
+/* ---------- 拍照识别 ---------- */
+let pestsCache = [];
+async function loadPests(){
+  try { pestsCache = await api.get('/api/pests'); } catch(e){}
+  renderScan();
+}
+function renderScan(){
+  const el = $('#view-scan');
+  const opts = pestsCache.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}（${esc(p.kind)}）</option>`).join('');
+  el.innerHTML = `
+    <div class="card">
+      <h2>拍照识别病虫害</h2>
+      <div class="photo-drop" onclick="$('#fileInput').click()">📷 点击拍照 / 选择图片<br><span class="small">客户端将压缩后上传识别</span></div>
+      <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="uploadPhoto(this)">
+      <img id="photoPreview">
+      <div id="scanResult"></div>
+    </div>
+    <div class="card">
+      <h2>演示模式（无需图片，按类别识别）</h2>
+      <label class="field"><span>选择病虫害类别</span>
+        <select id="demoPest">${opts}</select>
+      </label>
+      <label class="field"><span>预计距采收天数（可选，用于安全间隔期校验）</span>
+        <input id="demoDays" type="number" placeholder="如 5 表示 5 天后采收">
+      </label>
+      <button class="btn block" onclick="runDemo()">生成识别结果与防治建议</button>
+    </div>`;
+}
+
+async function uploadPhoto(input){
+  const f = input.files[0]; if(!f) return;
+  $('#photoPreview').src = URL.createObjectURL(f); $('#photoPreview').style.display='block';
+  const fd = new FormData(); fd.append('file', f);
+  $('#scanResult').innerHTML = '<div class="card">识别中…</div>';
+  try { showRecognition(await api.post('/api/recognitions', fd, true), $('#scanResult')); }
+  catch(e){ $('#scanResult').innerHTML = `<div class="alert critical"><div class="al-title">识别失败</div><div class="al-detail">${esc(e.message)}</div></div>`; }
+}
+
+async function runDemo(){
+  const pest = $('#demoPest').value;
+  const days = $('#demoDays').value === '' ? null : parseInt($('#demoDays').value);
+  const el = $('#scanResult');
+  el.innerHTML = '<div class="card">生成中…</div>';
+  try { showRecognition(await api.post('/api/recognitions/demo', {pest_class:pest, days_to_harvest:days}), el); }
+  catch(e){ el.innerHTML = `<div class="alert critical">${esc(e.message)}</div>`; }
+}
+
+function showRecognition(r, el){
+  const s = r.suggestion;
+  const kindCls = s.kind==='无异常'?'good':(s.risk==='高'?'critical':(s.risk==='中高'?'serious':'warning'));
+  const pestPills = (s.pesticides||[]).map(p=>`<span class="pill neutral">${esc(p.name)} · ${p.safe_interval_days}天</span>`).join(' ');
+  const warns = (s.warnings||[]).map(w=>`<div class="alert serious mt"><div class="al-detail">${esc(w)}</div></div>`).join('');
+  el.innerHTML = `
+    <div class="card mt">
+      <h2>识别结果 <span class="pill ${kindCls}"><span class="dot"></span>${esc(s.pest_class)}</span></h2>
+      <div class="kv"><span class="k">置信度</span><span class="v">${(r.confidence*100).toFixed(1)}%</span></div>
+      <div class="kv"><span class="k">风险等级</span><span class="v">${esc(s.risk)}（${esc(s.kind)}）</span></div>
+      <div class="mt small muted">${s.latin?esc(s.latin):''}</div>
+      <div class="mt" style="white-space:pre-line">${esc(s.text)}</div>
+      <div class="mt">${pestPills}</div>
+      ${warns}
+      <div class="mt small muted">识别来源：${esc(r.source)}${r.is_mock?'（模拟）':''}</div>
+    </div>`;
+}
+
+/* ---------- 快速填报 ---------- */
+async function loadFormPlots(){
+  try { const plots = await api.get('/api/plots'); window._plots = plots; } catch(e){ window._plots=[]; }
+  renderForm();
+}
+function renderForm(){
+  const el = $('#view-form');
+  const plotOpts = (window._plots||[]).map(p=>`<option value="${p.id}">${esc(p.name)}（${esc(p.variety)}）</option>`).join('');
+  el.innerHTML = `
+    <div class="card">
+      <h2>农事记录填报</h2>
+      <label class="field"><span>地块</span><select id="opPlot">${plotOpts}</select></label>
+      <label class="field"><span>农事类型</span>
+        <select id="opType"><option>施肥</option><option>灌溉</option><option>修剪</option><option>疏花疏果</option><option>巡检</option><option>清园</option></select>
+      </label>
+      <label class="field"><span>操作人</span><input id="opOperator" value="陈伯"></label>
+      <label class="field"><span>备注（JSON 可空）</span><input id="opRemark" placeholder="如：复合肥 40kg 环状沟施"></label>
+      <button class="btn block" onclick="submitOperation()">提交农事记录</button>
+      <div id="opMsg" class="mt"></div>
+    </div>
+    <div class="card">
+      <h2>用药台账录入（含 CAS 校验）</h2>
+      <label class="field"><span>地块</span><select id="pstPlot">${plotOpts}</select></label>
+      <label class="field"><span>农药名称</span><input id="pstName" list="pstList" placeholder="输入或选择，如 高效氯氟氰菊酯">
+        <datalist id="pstList"></datalist></label>
+      <label class="field"><span>CAS 编号（可选，用于校验）</span><input id="pstCas" placeholder="如 91465-08-6"></label>
+      <label class="field"><span>距预计采收天数（可选）</span><input id="pstDays" type="number"></label>
+      <button class="btn block" onclick="submitPesticide()">提交用药记录</button>
+      <div id="pstMsg" class="mt"></div>
+    </div>`;
+  fetch('/api/pesticides').then(r=>r.json()).then(list=>{
+    $('#pstList').innerHTML = list.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}（${p.category}）</option>`).join('');
+  }).catch(()=>{});
+}
+
+async function submitOperation(){
+  const plot_id = +$('#opPlot').value;
+  const detail = { remark: $('#opRemark').value };
+  try {
+    await api.post('/api/operations', {plot_id, operation_type:$('#opType').value, operator:$('#opOperator').value, detail});
+    $('#opMsg').innerHTML = '<div class="alert good">农事记录已提交 ✅</div>';
+    $('#opRemark').value='';
+  } catch(e){ $('#opMsg').innerHTML = `<div class="alert critical">${esc(e.message)}</div>`; }
+}
+
+async function submitPesticide(){
+  const payload = { plot_id:+$('#pstPlot').value, pesticide_name:$('#pstName').value, cas_no:$('#pstCas').value };
+  const d = $('#pstDays').value; if(d!=='') payload.days_to_harvest = parseInt(d);
+  try {
+    const r = await api.post('/api/pesticide-records', payload);
+    $('#pstMsg').innerHTML = `<div class="alert ${r.warning?'warning':'good'}">${esc(r.warning||'用药记录已提交')} ✅<br><span class="small">最早可采收：${r.earliest_harvest_date}</span></div>`;
+    $('#pstName').value=''; $('#pstCas').value=''; $('#pstDays').value='';
+  } catch(e){ $('#pstMsg').innerHTML = `<div class="alert critical">${esc(e.message)}</div>`; }
+}
+
+/* init */
+switchTab('todo');
+</script>
+</body>
+</html>
