@@ -51,3 +51,23 @@ VISION_API_KEY = os.environ.get("VISION_API_KEY", "").strip()
 # 设置后二维码内容为 {QR_BASE_URL}/trace?code=xxx，便于消费者用微信/H5 扫码查看；
 # 留空则二维码内容就是溯源码本身，由小程序「扫一扫」解析。
 QR_BASE_URL = os.environ.get("QR_BASE_URL", "").strip()
+
+
+# ---------------------------------------------------------------------------
+# 天气联动（Open-Meteo，免 Key）
+# ---------------------------------------------------------------------------
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, str(default)).strip())
+    except ValueError:
+        return default
+
+
+# 0 / false / no / off 关闭；关闭后待办里不会出现天气预警，也不发外网请求。
+WEATHER_ENABLED = os.environ.get("WEATHER_ENABLED", "1").strip().lower() not in (
+    "0", "false", "no", "off",
+)
+WEATHER_LAT = _env_float("WEATHER_LAT", 23.55)
+WEATHER_LON = _env_float("WEATHER_LON", 113.58)
+WEATHER_LOCATION = os.environ.get("WEATHER_LOCATION", "广东省广州市从化区").strip()
+WEATHER_TIMEOUT = _env_float("WEATHER_TIMEOUT", 3.0)

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <title>智慧果园管家</title>
 <link rel="stylesheet" href="/assets/css/app.css">
 </head>
@@ -13,6 +13,7 @@
       <h1>智慧果园管家</h1>
       <div class="sub">东风荔枝果园 · 从田间到餐桌</div>
     </div>
+    <button class="pill neutral" id="fontToggle" onclick="toggleFont()" style="margin-right:6px;border:none;cursor:pointer;font-family:inherit">大字</button>
     <a class="pill neutral" href="/trace?code=LZ-P03-20260702-0001" style="text-decoration:none;margin-right:8px">溯源</a>
     <a class="pill neutral" href="/dashboard" style="text-decoration:none">看板</a>
   </div>
@@ -47,6 +48,19 @@ const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>
 
 const levelCls = { good:'good', warning:'warning', serious:'serious', critical:'critical' };
 
+/* ---------- 适老化大字模式 ---------- */
+function applyFont(){
+  const on = localStorage.getItem('fontLarge') === '1';
+  document.documentElement.classList.toggle('font-lg', on);
+  const b = $('#fontToggle');
+  if(b) b.textContent = on ? '标准' : '大字';
+}
+function toggleFont(){
+  const on = document.documentElement.classList.toggle('font-lg');
+  localStorage.setItem('fontLarge', on ? '1' : '0');
+  applyFont();
+}
+
 function switchTab(tab){
   $$('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   ['todo','plots','scan','form'].forEach(t=>$('#view-'+t).classList.toggle('hidden', t!==tab));
@@ -66,6 +80,11 @@ async function loadTodos(){
       <div class="alert ${levelCls[i.level]||'neutral'}">
         <div class="al-title">${esc(i.title)}</div>
         <div class="al-detail">${esc(i.detail)}</div>
+        ${i.type==='recognition'
+          ? '<button class="btn ghost small" style="margin-top:8px" onclick="goRecognition()">去处置</button>'
+          : (i.type==='weather'
+              ? '<button class="btn ghost small" style="margin-top:8px" onclick="switchTab(\'scan\')">去拍照识别</button>'
+              : (i.action ? `<div class="small muted" style="margin-top:6px">${esc(i.action)}</div>` : ''))}
       </div>`).join('');
   } catch(e){ el.innerHTML = `<div class="card">加载失败：${esc(e.message)}</div>`; }
 }
@@ -114,9 +133,12 @@ async function openPlot(id){
 
 /* ---------- 拍照识别 ---------- */
 let pestsCache = [];
+let scanPlots = [];
 async function loadPests(){
   try { pestsCache = await api.get('/api/pests'); } catch(e){}
+  try { scanPlots = await api.get('/api/plots'); } catch(e){ scanPlots = []; }
   renderScan();
+  loadRecognitionHistory();
 }
 function renderScan(){
   const el = $('#view-scan');
@@ -126,6 +148,9 @@ function renderScan(){
       <h2>拍照识别病虫害</h2>
       <div class="photo-drop" onclick="$('#fileInput').click()">📷 点击拍照 / 选择图片<br><span class="small">客户端将压缩后上传识别</span></div>
       <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="uploadPhoto(this)">
+      <label class="field"><span>地块（处置时把处置记录写入该地块台账）</span>
+        <select id="scanPlot">${scanPlots.map(p=>`<option value="${p.id}">${esc(p.name)}（${esc(p.variety)}）</option>`).join('')}</select>
+      </label>
       <img id="photoPreview">
       <div id="scanResult"></div>
     </div>
@@ -138,13 +163,76 @@ function renderScan(){
         <input id="demoDays" type="number" placeholder="如 5 表示 5 天后采收">
       </label>
       <button class="btn block" onclick="runDemo()">生成识别结果与防治建议</button>
+    </div>
+    <div class="card" id="historyCard">
+      <h2>识别记录 <button class="btn ghost small" onclick="loadRecognitionHistory()">刷新</button></h2>
+      <div id="recognitionHistory"><span class="muted small">加载中…</span></div>
     </div>`;
+}
+
+/* ---------- 识别记录（补上闭环的另一端） ---------- */
+const STATUS_TEXT = { pending:'待处置', handled:'已处置', ignored:'已忽略', false_positive:'误判' };
+const STATUS_CLS = { pending:'critical', handled:'good', ignored:'neutral', false_positive:'neutral' };
+let recognitionCache = {};
+
+function parseSuggestion(r){
+  if (r && r.suggestion && typeof r.suggestion === 'object') return r.suggestion;
+  try { return JSON.parse((r && r.suggestion_json) || '{}') || {}; } catch(e){ return {}; }
+}
+
+function goRecognition(){
+  window._focusHistory = true;
+  switchTab('scan');
+}
+
+async function loadRecognitionHistory(){
+  const box = $('#recognitionHistory');
+  if(!box) return;
+  try {
+    const rows = await api.get('/api/recognitions?limit=20');
+    recognitionCache = {};
+    rows.forEach(r => { recognitionCache[r.id] = r; });
+    const sorted = rows.slice().sort((a,b)=> (a.status==='pending'?0:1) - (b.status==='pending'?0:1));
+    box.innerHTML = sorted.length ? sorted.map(r=>{
+      const s = parseSuggestion(r);
+      const when = String(r.created_at||'').replace('T',' ').slice(0,16);
+      const conf = r.confidence != null ? (r.confidence*100).toFixed(0)+'%' : '—';
+      return `<div class="list-item" style="cursor:pointer" onclick="showHistoryRecognition(${r.id})">
+        <div class="li-main">
+          <div class="li-title">${esc(r.detected_class || s.pest_class || '未知')}</div>
+          <div class="li-desc">${esc(r.plot_name || '未指定地块')} · ${when} · 置信度 ${conf}</div>
+        </div>
+        <div class="li-side">
+          <span class="pill ${STATUS_CLS[r.status]||'neutral'}"><span class="dot"></span>${STATUS_TEXT[r.status]||r.status}</span>
+        </div>
+      </div>`;
+    }).join('') : '<div class="muted small">暂无识别记录，先拍一张或试试演示模式</div>';
+  } catch(e){
+    box.innerHTML = `<div class="alert critical"><div class="al-detail">识别记录加载失败：${esc(e.message)}</div></div>`;
+  }
+  if (window._focusHistory){
+    window._focusHistory = false;
+    const card = $('#historyCard');
+    if(card) card.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+}
+
+function showHistoryRecognition(id){
+  const r = recognitionCache[id];
+  if(!r) return;
+  const s = parseSuggestion(r);
+  if(!s.pest_class) s.pest_class = r.detected_class || '未知';
+  const view = { ...r, suggestion: s };
+  showRecognition(view, $('#scanResult'));
+  $('#scanResult').scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
 async function uploadPhoto(input){
   const f = input.files[0]; if(!f) return;
   $('#photoPreview').src = URL.createObjectURL(f); $('#photoPreview').style.display='block';
   const fd = new FormData(); fd.append('file', f);
+  const pid = $('#scanPlot') && $('#scanPlot').value;
+  if(pid) fd.append('plot_id', pid);
   $('#scanResult').innerHTML = '<div class="card">识别中…</div>';
   try { showRecognition(await api.post('/api/recognitions', fd, true), $('#scanResult')); }
   catch(e){ $('#scanResult').innerHTML = `<div class="alert critical"><div class="al-title">识别失败</div><div class="al-detail">${esc(e.message)}</div></div>`; }
@@ -153,17 +241,50 @@ async function uploadPhoto(input){
 async function runDemo(){
   const pest = $('#demoPest').value;
   const days = $('#demoDays').value === '' ? null : parseInt($('#demoDays').value);
+  const pid = $('#scanPlot') && $('#scanPlot').value;
   const el = $('#scanResult');
   el.innerHTML = '<div class="card">生成中…</div>';
-  try { showRecognition(await api.post('/api/recognitions/demo', {pest_class:pest, days_to_harvest:days}), el); }
+  const body = {pest_class:pest, days_to_harvest:days};
+  if(pid) body.plot_id = parseInt(pid);
+  try { showRecognition(await api.post('/api/recognitions/demo', body), el); }
   catch(e){ el.innerHTML = `<div class="alert critical">${esc(e.message)}</div>`; }
 }
 
 function showRecognition(r, el){
+  window._lastRecognition = r;
   const s = r.suggestion;
   const kindCls = s.kind==='无异常'?'good':(s.risk==='高'?'critical':(s.risk==='中高'?'serious':'warning'));
   const pestPills = (s.pesticides||[]).map(p=>`<span class="pill neutral">${esc(p.name)} · ${p.safe_interval_days}天</span>`).join(' ');
   const warns = (s.warnings||[]).map(w=>`<div class="alert serious mt"><div class="al-detail">${esc(w)}</div></div>`).join('');
+  const canPesticide = !!(s.pesticides && s.pesticides.length);
+  const pending = !r.status || r.status === 'pending';
+  const actionLabel = { pesticide: '按建议用药', operation: '人工清除', ignore: '观察（暂不处理）', none: '无需处置' };
+  const recommend = s.recommended_action || 'none';
+  const btnCls = a => (recommend === a ? 'btn small' : 'btn ghost small');
+  const recommendHtml = (recommend !== 'none' && s.action_reason)
+    ? `<div class="alert ${recommend === 'pesticide' ? 'warning' : 'good'} mt">
+         <div class="al-title">系统建议：${esc(actionLabel[recommend] || '')}</div>
+         <div class="al-detail">${esc(s.action_reason)}</div>
+       </div>` : '';
+  const statusBadge = pending ? '' : `<div class="mt"><span class="pill good"><span class="dot"></span>已处置</span></div>`;
+  let actionButtons = '';
+  if (pending && recommend === 'none') {
+    actionButtons = `
+        <button class="btn ghost small" onclick="handleRecognition(\'false_positive\')">误判</button>
+        <button class="btn ghost small" onclick="handleRecognition(\'ignore\')">忽略</button>`;
+  } else if (pending) {
+    actionButtons = [
+      canPesticide ? `<button class="${btnCls('pesticide')}" onclick="handleRecognition('pesticide')">按建议用药${recommend === 'pesticide' ? ' · 推荐' : ''}</button>` : '',
+      `<button class="${btnCls('operation')}" onclick="handleRecognition('operation')">人工清除${recommend === 'operation' ? ' · 推荐' : ''}</button>`,
+      `<button class="${btnCls('false_positive')}" onclick="handleRecognition('false_positive')">误判</button>`,
+      `<button class="${btnCls('ignore')}" onclick="handleRecognition('ignore')">忽略${recommend === 'ignore' ? ' · 推荐' : ''}</button>`
+    ].join('');
+  }
+  const actions = pending ? `
+      <div class="mt">
+        <div class="small muted" style="margin-bottom:6px">识别后处置（形成闭环，处置记录回链本次识别）</div>
+        ${actionButtons}
+      </div>` : statusBadge;
   el.innerHTML = `
     <div class="card mt">
       <h2>识别结果 <span class="pill ${kindCls}"><span class="dot"></span>${esc(s.pest_class)}</span></h2>
@@ -173,8 +294,48 @@ function showRecognition(r, el){
       <div class="mt" style="white-space:pre-line">${esc(s.text)}</div>
       <div class="mt">${pestPills}</div>
       ${warns}
+      ${recommendHtml}
+      ${actions}
       <div class="mt small muted">识别来源：${esc(r.source)}${r.is_mock?'（模拟）':''}</div>
     </div>`;
+}
+
+async function handleRecognition(method){
+  const r = window._lastRecognition;
+  if(!r) return;
+  const s = r.suggestion || {};
+  const pesticide = (s.pesticides||[])[0];
+  const body = { method };
+  if(method === 'pesticide'){
+    if(!pesticide) return;
+    body.pesticide_name = pesticide.name;
+    body.cas_no = pesticide.cas_no;
+    body.dosage = pesticide.dosage_hint || '';
+  } else if(method === 'operation'){
+    body.operation_type = '人工清除';
+    body.detail = { method: '人工清除', detected_class: s.pest_class };
+  } else if(method === 'false_positive'){
+    body.note = '人工判定为误判';
+  } else {
+    body.note = '暂不处理';
+  }
+  const el = $('#scanResult');
+  el.innerHTML = '<div class="card">提交处置…</div>';
+  try {
+    const res = await api.post('/api/recognitions/'+r.id+'/handle', body);
+    window._lastRecognition = Object.assign({}, r, { status: res.status });
+    showRecognition(window._lastRecognition, el);
+    let tip = '';
+    if(res.summary && res.summary.safe_interval_days){
+      tip = `<div class="alert good"><div class="al-title">已写入用药台账</div><div class="al-detail">${esc(res.summary.pesticide_name)} · 安全间隔期 ${res.summary.safe_interval_days} 天，${esc(res.summary.earliest_harvest_date)} 之后方可采收</div></div>`;
+    } else if(res.summary && res.summary.operation_type){
+      tip = `<div class="alert good"><div class="al-title">已写入农事记录</div><div class="al-detail">${esc(res.summary.operation_type)} · ${esc(res.summary.operation_date)}</div></div>`;
+    }
+    if(tip) el.insertAdjacentHTML('afterbegin', tip);
+    loadRecognitionHistory();
+  } catch(e){
+    el.innerHTML = `<div class="alert critical"><div class="al-title">处置失败</div><div class="al-detail">${esc(e.message)}</div></div>`;
+  }
 }
 
 /* ---------- 快速填报 ---------- */
@@ -233,6 +394,7 @@ async function submitPesticide(){
 }
 
 /* init */
+applyFont();
 switchTab('todo');
 </script>
 </body>

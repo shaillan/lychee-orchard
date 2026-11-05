@@ -1,4 +1,4 @@
-<view class="wrap">
+<view class="wrap {{fontClass}}">
   <view class="card">
     <view class="h2">生成采收批次</view>
     <view class="field">

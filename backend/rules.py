@@ -151,6 +151,39 @@ def recommended_pesticides(pest_class: str) -> list[dict]:
     return sorted(items, key=lambda p: p["safe_interval_days"])
 
 
+def _pick_action(
+    risk: str, safe_opts: list[dict], all_opts: list[dict], days_to_harvest: int | None
+) -> tuple[str, str]:
+    """根据风险等级与可用药剂，给出建议处置方式及理由（纯规则、可解释）。
+
+    优先保证「不打来不及过间隔期的药」：
+      - 高风险且仍有合规药剂 → 用药；
+      - 高风险但临近采收/无药剂 → 人工清除；
+      - 中高风险 → 人工清除等物理防治；
+      - 中风险 → 观察（忽略），虫口上升再处置。
+    """
+    if risk == "高":
+        if safe_opts:
+            if days_to_harvest is not None:
+                return "pesticide", (
+                    f"风险高；距采收 {days_to_harvest} 天仍有 {len(safe_opts)} 种合规药剂，"
+                    f"建议按安全间隔期用药。"
+                )
+            return "pesticide", "风险高；有登记药剂可用，施药前请确认距采收时间满足安全间隔期。"
+        if all_opts and days_to_harvest is not None:
+            return "operation", (
+                f"风险高，但距采收仅 {days_to_harvest} 天，推荐药剂均来不及过安全间隔期，"
+                f"建议人工清除等物理防治。"
+            )
+        return "operation", "该病虫害暂无可用登记药剂，建议人工清除等物理/农业防治。"
+    if risk == "中高":
+        return "operation", (
+            "风险中高，建议优先人工捕杀、剪除病枝病果等物理/农业防治，"
+            "压低虫口基数后再评估是否用药。"
+        )
+    return "ignore", "风险中等，暂未达防治阈值，建议持续观察并加强巡园；虫口上升时再处置。"
+
+
 def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | None = None) -> dict:
     """把识别结果转换为结构化防治建议。
 
@@ -167,6 +200,8 @@ def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | 
             "summary": "未能匹配到本地病虫害知识库，建议人工复核或送检。",
             "pesticides": [],
             "warnings": ["识别结果不在知识库范围内，请勿直接按建议用药。"],
+            "recommended_action": "none",
+            "action_reason": "识别结果不在知识库内，建议重新拍照或联系农技人员现场诊断。",
             "text": "",
         }
 
@@ -182,7 +217,10 @@ def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | 
             "pest_class": pest_class, "kind": info["kind"], "risk": info["risk"],
             "latin": info["latin"], "confidence": confidence,
             "summary": info["symptoms"], "timing": info["timing"], "notes": info["notes"],
-            "pesticides": [], "warnings": [], "text": text,
+            "pesticides": [], "warnings": [],
+            "recommended_action": "none",
+            "action_reason": "未发现明显病虫害，保持常规巡检与水肥管理即可，无需处置。",
+            "text": text,
         }
 
     if info["kind"] == "未知":
@@ -196,6 +234,8 @@ def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | 
             "summary": info["symptoms"], "timing": info["timing"], "notes": info["notes"],
             "pesticides": [],
             "warnings": ["结果不在已知病虫害知识库内，请勿据此用药。"],
+            "recommended_action": "none",
+            "action_reason": "结果不可靠，建议重新拍摄或请农技人员复核，暂勿处置。",
             "text": text,
         }
 
@@ -225,6 +265,8 @@ def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | 
         lines.append("施药前请核对农药标签登记作物与剂量，严格执行安全间隔期。")
     lines.extend(warnings)
 
+    action, action_reason = _pick_action(info["risk"], safe_opts, pesticide_opts, days_to_harvest)
+
     return {
         "pest_class": pest_class,
         "latin": info["latin"],
@@ -237,5 +279,7 @@ def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | 
         # 只要调用了方给了采收倒计时，就严格只返回已过滤的安全药剂（可能为空）
         "pesticides": safe_opts,
         "warnings": warnings,
+        "recommended_action": action,
+        "action_reason": action_reason,
         "text": "\n".join(lines),
     }

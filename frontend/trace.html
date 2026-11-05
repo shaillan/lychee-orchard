@@ -6,7 +6,7 @@
 <title>品质溯源 · 智慧果园管家</title>
 <link rel="stylesheet" href="/assets/css/app.css">
 </head>
-<body>
+<body class="trace-page">
 <div class="shell">
   <div class="topbar">
     <div><h1>品质溯源</h1><div class="sub">一物一码 · 种植—管护—销售全过程</div></div>
@@ -26,6 +26,71 @@
 
 <script>
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// 合格证独立于页面展示，打印时只显示它（见 app.css 的 @media print）
+function certHtml(t, cv){
+  const pesticides = t.care.pesticides || [];
+  const pRows = pesticides.length ? pesticides.map(p=>`<tr>
+      <td>${esc(p.pesticide_name)}</td>
+      <td>${esc(p.apply_time)}</td>
+      <td>${p.safe_interval_days}</td>
+      <td>${esc(p.earliest_harvest_date) || '—'}</td>
+      <td>${esc(p.compliance_label)}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="5">无用药记录</td></tr>';
+  const blocked = t.status !== 'released';
+  const today = new Date().toISOString().slice(0,10);
+  return `<div id="certificate" class="certificate${blocked ? ' blocked' : ''}">
+    ${blocked ? '<div class="cert-banner">已拦截 · 不得销售</div>' : ''}
+    <div class="cert-inner">
+      <div class="cert-head">
+        <div class="cert-title">荔枝产品质量合格证</div>
+        <div class="cert-sub">智慧果园管家 · 一物一码全程溯源</div>
+      </div>
+      <div class="cert-body">
+        <div class="cert-main">
+          <div class="cert-row"><div class="cert-k">溯源码</div><div class="cert-v">${esc(t.code)}</div></div>
+          <div class="cert-row"><div class="cert-k">批次号</div><div class="cert-v">${esc(t.batch_no)}</div></div>
+          <div class="cert-row"><div class="cert-k">果园 / 地块</div><div class="cert-v">${esc(t.planting.orchard)} · ${esc(t.planting.plot_name)}</div></div>
+          <div class="cert-row"><div class="cert-k">产地</div><div class="cert-v">${esc(t.planting.location)}</div></div>
+          <div class="cert-row"><div class="cert-k">品种 / 定植</div><div class="cert-v">${esc(t.variety)} · ${t.planting.planting_year} 年</div></div>
+          <div class="cert-row"><div class="cert-k">采收日期</div><div class="cert-v">${esc(t.harvest_date)}</div></div>
+          <div class="cert-row"><div class="cert-k">农残检测</div><div class="cert-v">${esc(t.sales.detection_report)}</div></div>
+          <div class="cert-row"><div class="cert-k">包装 / 物流</div><div class="cert-v">${esc(t.sales.packaging)}${t.sales.logistics ? ' · ' + esc(t.sales.logistics) : ''}</div></div>
+          ${blocked ? `<div class="cert-row"><div class="cert-k">拦截原因</div><div class="cert-v cert-reason">${esc(t.block_reason)}</div></div>` : ''}
+        </div>
+        <div class="cert-side">
+          <img class="cert-qr" src="/api/batches/${encodeURIComponent(t.batch_no)}/qrcode" alt="批次溯源码">
+          <div class="cert-sub">扫码查验全程记录</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;font-weight:700;font-size:13px">用药记录（截至采收日）</div>
+      <table class="cert-table">
+        <thead><tr><th>药剂</th><th>施药日期</th><th>安全间隔期(天)</th><th>最早可采日</th><th>状态</th></tr></thead>
+        <tbody>${pRows}</tbody>
+      </table>
+      <div class="cert-foot">
+        <span>${cv.valid ? '哈希链校验通过' : '哈希链校验失败'} · 共 ${cv.total} 条存证</span>
+        <span>出具日期：${today}</span>
+      </div>
+      <div class="cert-sign">
+        <span>生产者签字：____________</span>
+        <span>质检员签字：____________</span>
+        <span>日期：____________</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// 等二维码加载完成再打印，否则打印预览里可能是空白框
+async function printCertificate(){
+  const cert = document.getElementById('certificate');
+  if(!cert){ return; }
+  const imgs = Array.from(cert.querySelectorAll('img'));
+  await Promise.all(imgs.map(img => (img.decode ? img.decode() : Promise.resolve()).catch(()=>{})));
+  window.print();
+}
+
 async function loadTrace(){
   let code = document.getElementById('codeInput').value.trim();
   if(!code){ const m = location.search.match(/code=([^&]+)/); code = m ? decodeURIComponent(m[1]) : ''; }
@@ -43,8 +108,16 @@ async function loadTrace(){
          <div class="kv"><span class="k">安全间隔期状态</span><span class="v">${esc(t.care.safety_state)}</span></div>`
       : '<div class="kv"><span class="k">用药记录</span><span class="v">无</span></div>';
     const hashes = (t.hash_chain||[]).map((h,i)=>`<div class="kv"><span class="k">#${i+1} ${esc(h.payload_summary)}</span><span class="v small muted">${h.record_hash.slice(0,12)}…</span></div>`).join('');
+    const cv = t.chain_verify || { total: 0, valid: true, tampered: [], broken: [], legacy: [] };
+    const badIds = [...(cv.tampered||[]), ...(cv.broken||[])];
+    const chainBadge = cv.valid
+      ? `<span class="pill good"><span class="dot"></span>链校验通过 · ${cv.total} 条</span>`
+      : `<span class="pill critical"><span class="dot"></span>链校验失败 · 第 ${badIds.join('、')} 条</span>`;
+    const legacyNote = (cv.legacy||[]).length
+      ? `<div class="small muted mt">${cv.legacy.length} 条历史记录未存原文，未参与重算</div>` : '';
 
     document.getElementById('traceResult').innerHTML = `
+      <div class="trace-view">
       <div class="trace-hero card">
         <div class="t-code">${esc(t.code)}</div>
         <div class="mt">${statusPill} <span class="pill neutral">${esc(t.variety)}</span></div>
@@ -81,8 +154,13 @@ async function loadTrace(){
         <div class="kv"><span class="k">物流</span><span class="v">${esc(t.sales.logistics)||'—'}</span></div>
       </div>
 
-      ${hashes?`<div class="card trace-seg"><div class="seg-head"><span class="n">🔗</span>哈希存证链（可校验）</div>${hashes}</div>`:''}
-      <div class="small muted" style="text-align:center; padding:8px 0 20px">溯源数据来自地块档案与用药台账，哈希链保证不可篡改</div>`;
+      ${hashes?`<div class="card trace-seg"><div class="seg-head"><span class="n">🔗</span>哈希存证链（可校验） ${chainBadge}</div>${hashes}${legacyNote}</div>`:''}
+      <div class="small muted" style="text-align:center; padding:8px 0 8px">溯源数据来自地块档案与用药台账，哈希链保证不可篡改</div>
+      <div class="cert-actions no-print">
+        <button class="btn block" onclick="printCertificate()">打印合格证 / 保存为 PDF</button>
+      </div>
+      </div>
+      ${certHtml(t, cv)}`;
   } catch(e){
     document.getElementById('traceResult').innerHTML = `<div class="alert critical"><div class="al-title">查询失败</div><div class="al-detail">${esc(e.message)}</div></div>`;
   }

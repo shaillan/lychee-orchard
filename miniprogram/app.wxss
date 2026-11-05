@@ -137,3 +137,43 @@ page {
 
 .empty { text-align: center; color: #8a9890; padding: 40rpx 0; font-size: 26rpx; }
 .error { color: #c0392b; }
+
+/* ---------------------------------------------------------------------------
+   适老化大字模式：根节点加 .font-lg 即整体放大。
+   写成「.font-lg .xxx」比页面级单类选择器多一层，能压过各页 wxss，无需 !important。
+   --------------------------------------------------------------------------- */
+.font-lg { font-size: 34rpx; }
+.font-lg .h2 { font-size: 36rpx; }
+.font-lg .small { font-size: 29rpx; }
+.font-lg .pill { font-size: 27rpx; }
+.font-lg .al-title { font-size: 33rpx; }
+.font-lg .al-detail { font-size: 31rpx; }
+.font-lg .kv { font-size: 33rpx; }
+.font-lg .btn { font-size: 36rpx; }
+.font-lg .btn.small { font-size: 31rpx; padding: 18rpx 26rpx; }
+.font-lg .field .label { font-size: 31rpx; }
+.font-lg .field input,
+.font-lg .field .picker-value { font-size: 33rpx; }
+.font-lg .hero-title { font-size: 45rpx; }
+.font-lg .hero-sub { font-size: 29rpx; }
+.font-lg .quick-item { font-size: 29rpx; }
+.font-lg .quick-item .qi { font-size: 48rpx; }
+.font-lg .empty { font-size: 31rpx; }
+.font-lg .b-code { font-size: 36rpx; }
+.font-lg .b-meta { font-size: 29rpx; }
+.font-lg .t-code { font-size: 41rpx; }
+.font-lg .head .title { font-size: 36rpx; }
+.font-lg .hist-title { font-size: 32rpx; }
+.font-lg .hist-meta { font-size: 26rpx; }
+.font-lg .seg-head { font-size: 33rpx; }
+.font-lg .li-title { font-size: 32rpx; }
+.font-lg .li-desc { font-size: 29rpx; }
+.font-lg .pre { font-size: 31rpx; }
+.font-lg .photo-empty { font-size: 30rpx; }
+.font-lg .photo-empty .cam { font-size: 72rpx; }
+.font-lg .z-code { font-size: 34rpx; }
+.font-lg .z-name { font-size: 29rpx; }
+.font-lg .z-tree { font-size: 27rpx; }
+.font-lg .card-head .title { font-size: 34rpx; }
+.font-lg .legend { font-size: 26rpx; }
+.font-lg .bar-season { font-size: 26rpx; }

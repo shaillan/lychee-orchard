@@ -1,4 +1,4 @@
-<view class="wrap">
+<view class="wrap {{fontClass}}">
   <view class="field">
     <text class="label">地块</text>
     <picker mode="selector" range="{{plotNames}}" value="{{plotIndex}}" bindchange="onPlotChange">

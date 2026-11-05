@@ -41,3 +41,16 @@
 
 .pills { line-height: 2.2; }
 .pills .pill { margin: 0 10rpx 10rpx 0; }
+
+/* 识别记录 */
+.hist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #f0f3f0;
+}
+.hist-item:last-child { border-bottom: none; }
+.hist-main { flex: 1; min-width: 0; margin-right: 16rpx; }
+.hist-title { font-size: 28rpx; font-weight: 600; }
+.hist-meta { font-size: 23rpx; color: #7a8a80; margin-top: 4rpx; }

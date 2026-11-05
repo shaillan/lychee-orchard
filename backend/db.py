@@ -76,6 +76,12 @@ CREATE TABLE IF NOT EXISTS recognitions (
     suggestion_text TEXT,
     suggestion_json TEXT,
     is_mock         INTEGER DEFAULT 1,
+    status          TEXT NOT NULL DEFAULT 'pending',  -- pending | handled | ignored | false_positive
+    handled_at      TEXT,
+    handle_method   TEXT,                              -- pesticide | operation | ignore | false_positive
+    handle_note     TEXT,
+    pesticide_record_id INTEGER,                       -- 用药处置回链 pesticide_records.id
+    operation_id    INTEGER,                           -- 农事处置回链 farm_operations.id
     created_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_rec_created ON recognitions(created_at);
@@ -103,6 +109,7 @@ CREATE TABLE IF NOT EXISTS trace_hash_log (
     record_hash     TEXT NOT NULL,
     prev_hash       TEXT NOT NULL,
     payload_summary TEXT,
+    payload_json    TEXT,                    -- 存证原文，校验时据此重算哈希
     created_at      TEXT NOT NULL
 );
 """
@@ -131,6 +138,24 @@ def get_conn():
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn) -> None:
+    """轻量迁移：给已存在的旧库补列，无需删库重建。"""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(trace_hash_log)")}
+    if "payload_json" not in columns:
+        conn.execute("ALTER TABLE trace_hash_log ADD COLUMN payload_json TEXT")
+
+    # 识别→处置闭环：旧库补状态列（status 带默认值，旧行自动回填 pending）
+    rec_columns = {row["name"] for row in conn.execute("PRAGMA table_info(recognitions)")}
+    if "status" not in rec_columns:
+        conn.execute("ALTER TABLE recognitions ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'")
+        conn.execute("ALTER TABLE recognitions ADD COLUMN handled_at TEXT")
+        conn.execute("ALTER TABLE recognitions ADD COLUMN handle_method TEXT")
+        conn.execute("ALTER TABLE recognitions ADD COLUMN handle_note TEXT")
+        conn.execute("ALTER TABLE recognitions ADD COLUMN pesticide_record_id INTEGER")
+        conn.execute("ALTER TABLE recognitions ADD COLUMN operation_id INTEGER")
 
 
 def rows_to_dicts(rows) -> list[dict]:

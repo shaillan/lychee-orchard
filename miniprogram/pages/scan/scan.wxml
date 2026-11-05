@@ -1,4 +1,4 @@
-<view class="wrap">
+<view class="wrap {{fontClass}}">
   <view class="card">
     <view class="h2">拍照识别病虫害</view>
     <view class="photo-box" bindtap="choosePhoto">
@@ -44,7 +44,7 @@
     <view class="btn ghost block" bindtap="runDemo">生成识别结果与防治建议</view>
   </view>
 
-  <view wx:if="{{result}}" class="card">
+  <view wx:if="{{result}}" class="card" id="resultCard">
     <view class="head">
       <text class="title">识别结果</text>
       <text class="pill {{result.riskClass}}">{{result.pest_class}}</text>
@@ -61,6 +61,48 @@
 
     <view wx:for="{{result.warnings}}" wx:key="*this" class="alert serious mt">
       <view class="al-detail">{{item}}</view>
+    </view>
+
+    <view wx:if="{{result.handleTip}}" class="alert good mt">
+      <view class="al-title">已写入台账</view>
+      <view class="al-detail">{{result.handleTip}}</view>
+    </view>
+
+    <view wx:if="{{result.pending && result.showActions}}" class="alert good mt">
+      <view class="al-title">系统建议：{{result.actionLabel}}</view>
+      <view class="al-detail">{{result.actionReason}}</view>
+    </view>
+
+    <block wx:if="{{result.pending && result.showActions}}">
+      <view class="small muted mt">识别后处置（形成闭环，处置记录回链本次识别）</view>
+      <view wx:if="{{result.pesticides.length}}" class="{{result.pesticideBtnClass}} block mt" bindtap="handleRecognition" data-method="pesticide">按建议用药{{result.recommendedAction === 'pesticide' ? ' · 推荐' : ''}}</view>
+      <view class="{{result.operationBtnClass}} block mt" bindtap="handleRecognition" data-method="operation">人工清除{{result.recommendedAction === 'operation' ? ' · 推荐' : ''}}</view>
+      <view class="row mt">
+        <view class="btn ghost" bindtap="handleRecognition" data-method="false_positive">误判</view>
+        <view class="{{result.ignoreBtnClass}}" bindtap="handleRecognition" data-method="ignore">忽略{{result.recommendedAction === 'ignore' ? ' · 推荐' : ''}}</view>
+      </view>
+    </block>
+    <block wx:elif="{{result.pending}}">
+      <view class="row mt">
+        <view class="btn ghost" bindtap="handleRecognition" data-method="false_positive">误判</view>
+        <view class="btn ghost" bindtap="handleRecognition" data-method="ignore">忽略</view>
+      </view>
+    </block>
+    <view wx:else class="mt"><text class="pill good">已处置</text></view>
+  </view>
+
+  <view class="card" id="historyCard">
+    <view class="head">
+      <text class="title">识别记录</text>
+      <text class="pill neutral">{{history.length}} 条</text>
+    </view>
+    <view wx:if="{{!history.length}}" class="empty">暂无识别记录，先拍一张或试试演示模式</view>
+    <view wx:for="{{history}}" wx:key="id" class="hist-item" bindtap="openHistory" data-index="{{index}}">
+      <view class="hist-main">
+        <view class="hist-title">{{item.pestName}}</view>
+        <view class="hist-meta">{{item.plotName}} · {{item.timeText}} · 置信度 {{item.confidencePct}}%</view>
+      </view>
+      <text class="pill {{item.statusClass}}">{{item.statusText}}</text>
     </view>
   </view>
 </view>

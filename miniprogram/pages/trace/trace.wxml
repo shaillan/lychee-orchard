@@ -1,4 +1,4 @@
-<view class="wrap">
+<view class="wrap {{fontClass}}">
   <view class="card">
     <view class="h2">一物一码 · 查询溯源</view>
     <view class="field">
@@ -65,11 +65,14 @@
     </view>
 
     <view wx:if="{{trace.hash_chain.length}}" class="card seg">
-      <view class="seg-head"><text class="seg-no">🔗</text>哈希存证链</view>
+      <view class="seg-head"><text class="seg-no">🔗</text>哈希存证链
+        <text class="pill {{trace.chainBadgeClass}}">{{trace.chainBadgeText}}</text>
+      </view>
       <view wx:for="{{trace.hash_chain}}" wx:key="record_hash" class="kv">
         <text class="k">#{{index + 1}} {{item.payload_summary}}</text>
         <text class="v small muted">{{item.short}}…</text>
       </view>
+      <view wx:if="{{trace.legacyNote}}" class="small muted mt">{{trace.legacyNote}}</view>
     </view>
 
     <view class="small muted tip">溯源数据来自地块档案与用药台账，哈希链保证不可篡改</view>

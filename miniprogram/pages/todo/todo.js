@@ -1,11 +1,19 @@
 const api = require('../../utils/api');
+const font = require('../../utils/font');
 const { extractCode } = require('../../utils/util');
 
 Page({
-  data: { items: [], loading: true, error: '' },
+  data: { items: [], loading: true, error: '', fontClass: '', bigFont: false },
 
   onShow() {
+    this.setData({ fontClass: font.fontClass(), bigFont: font.isLarge() });
     this.load();
+  },
+
+  onFontToggle(e) {
+    const on = !!e.detail.value;
+    font.setLarge(on);
+    this.setData({ bigFont: on, fontClass: font.fontClass() });
   },
 
   onPullDownRefresh() {
@@ -32,6 +40,12 @@ Page({
       },
       fail: () => {}
     });
+  },
+
+  goScan() {
+    // tab 页不能带 query，用 storage 标记让扫码页滚到识别记录区
+    wx.setStorageSync('focusHistory', true);
+    wx.switchTab({ url: '/pages/scan/scan' });
   },
 
   goBatches() {

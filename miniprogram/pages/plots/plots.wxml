@@ -1,4 +1,4 @@
-<view class="wrap">
+<view class="wrap {{fontClass}}">
   <view class="h2">果树分区</view>
   <view class="zone-map" wx:if="{{plots.length}}">
     <view

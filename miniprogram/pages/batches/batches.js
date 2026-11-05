@@ -1,8 +1,10 @@
 const api = require('../../utils/api');
+const font = require('../../utils/font');
 const { today } = require('../../utils/util');
 
 Page({
   data: {
+    fontClass: '',
     batches: [], loading: true, error: '',
     plots: [], plotNames: [], plotIndex: 0,
     harvestDate: today(), seq: '1',
@@ -10,6 +12,7 @@ Page({
   },
 
   onShow() {
+    this.setData({ fontClass: font.fontClass() });
     this.load();
     if (!this.data.plots.length) this.loadMeta();
   },

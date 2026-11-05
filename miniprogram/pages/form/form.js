@@ -1,7 +1,9 @@
 const api = require('../../utils/api');
+const font = require('../../utils/font');
 
 Page({
   data: {
+    fontClass: '',
     plots: [], plotNames: [], plotIndex: 0,
     opTypes: ['施肥', '灌溉', '修剪', '疏花疏果', '巡检', '清园'],
     opIndex: 0,
@@ -16,6 +18,7 @@ Page({
   },
 
   onShow() {
+    this.setData({ fontClass: font.fontClass() });
     if (!this.data.plots.length) this.loadMeta();
   },
 

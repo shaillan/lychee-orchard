@@ -1,6 +1,7 @@
 """FastAPI 应用：果园电子档案 + 病虫害识别 + 品质溯源 + 数据看板。"""
 from __future__ import annotations
 
+import csv
 import io
 import json
 from datetime import date, datetime, timedelta
@@ -12,7 +13,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import ai_service, config
+from . import ai_service, config, weather
 from .db import get_conn, init_db, rows_to_dicts
 from .rules import PESTICIDES, PESTICIDE_BY_CAS, PESTICIDE_BY_NAME, PESTS, build_suggestion
 from .seed import seed_if_empty
@@ -84,6 +85,26 @@ class DemoRecognitionIn(BaseModel):
     days_to_harvest: int | None = None
 
 
+class RecognitionHandleIn(BaseModel):
+    method: str  # pesticide | operation | ignore | false_positive
+    # 用药处置（method=pesticide）
+    pesticide_name: str | None = None
+    cas_no: str | None = None
+    dosage: str = ""
+    dilution: str = ""
+    application_method: str = "叶面喷雾"
+    operator: str = "果农"
+    apply_time: str | None = None
+    days_to_harvest: int | None = None
+    # 农事处置（method=operation）
+    operation_type: str | None = None
+    operation_date: str | None = None
+    detail: dict = Field(default_factory=dict)
+    images: list[str] = Field(default_factory=list)
+    # 忽略 / 误判 / 通用备注
+    note: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -96,6 +117,47 @@ def _parse_date(value: str) -> date:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(400, f"日期格式应为 YYYY-MM-DD：{value}")
+
+
+def _write_pesticide(
+    conn, *, plot_id: int, pesticide_name: str, cas_no: str | None = None,
+    dosage: str = "", dilution: str = "", application_method: str = "叶面喷雾",
+    operator: str = "果农", apply_time: str | None = None, days_to_harvest: int | None = None,
+) -> dict:
+    """写入一条用药台账（含登记库/CAS 校验与安全间隔期计算），返回台账摘要。
+
+    供「直接填报用药」与「识别→用药处置」两条路径共用，避免校验逻辑重复。
+    """
+    _plot_or_404(conn, plot_id)
+    known = PESTICIDE_BY_CAS.get(cas_no or "") or PESTICIDE_BY_NAME.get(pesticide_name)
+    if not known:
+        raise HTTPException(
+            400,
+            "农药名称/CAS 编号未在登记库中找到，请核对包装信息后重试（防录错校验）",
+        )
+    if cas_no and known["cas_no"] != cas_no:
+        raise HTTPException(400, f"CAS 编号与农药「{known['name']}」不匹配，请核对")
+
+    apply_time = apply_time or _today()
+    safe_days = known["safe_interval_days"]
+    cur = conn.execute(
+        "INSERT INTO pesticide_records(plot_id, pesticide_name, cas_no, dosage, dilution, "
+        "application_method, operator, apply_time, safe_interval_days, target_pest, days_to_harvest, created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (plot_id, known["name"], known["cas_no"], dosage or known["dosage_hint"],
+         dilution, application_method, operator, apply_time,
+         safe_days, "、".join(known["targets"]), days_to_harvest,
+         datetime.now().isoformat(timespec="seconds")),
+    )
+    harvest_after = (_parse_date(apply_time) + timedelta(days=safe_days)).isoformat()
+    return {
+        "id": cur.lastrowid,
+        "pesticide_name": known["name"],
+        "cas_no": known["cas_no"],
+        "safe_interval_days": safe_days,
+        "earliest_harvest_date": harvest_after,
+        "warning": f"安全间隔期 {safe_days} 天，{harvest_after} 之后方可采收",
+    }
 
 
 def check_safety(conn, plot_id: int, harvest_date: str) -> dict:
@@ -121,6 +183,58 @@ def check_safety(conn, plot_id: int, harvest_date: str) -> dict:
             }
     return {"safe": True, "remaining_days": 0, "last_application": dict(rows[0]) if rows else None,
             "message": "所有用药均已过安全间隔期，可采收"}
+
+
+def _compliance_row(rec: dict, as_of: date | None = None) -> dict:
+    """把一条用药台账换算成合规明细：最早可采日 + 剩余天数 + 状态。"""
+    try:
+        earliest = _parse_date(rec["apply_time"]) + timedelta(days=int(rec["safe_interval_days"] or 0))
+        remaining = (earliest - (as_of or date.today())).days
+    except (HTTPException, ValueError, TypeError):
+        # 历史脏数据不能让整张表 500，单独标记出来
+        return {
+            **rec,
+            "earliest_harvest_date": "",
+            "days_remaining": None,
+            "safe": False,
+            "status": "unknown",
+            "compliance_label": "日期异常",
+        }
+    return {
+        **rec,
+        "earliest_harvest_date": earliest.isoformat(),
+        "days_remaining": max(remaining, 0),
+        "safe": remaining <= 0,
+        "status": "ok" if remaining <= 0 else "waiting",
+        "compliance_label": "已过安全间隔期" if remaining <= 0 else f"还需 {remaining} 天",
+    }
+
+
+def _compliance_rows(conn, plot_id: int | None = None, limit: int = 200) -> list[dict]:
+    sql = ("SELECT r.*, p.name AS plot_name FROM pesticide_records r "
+           "JOIN plots p ON p.id=r.plot_id ")
+    args: tuple = ()
+    if plot_id:
+        sql += "WHERE r.plot_id=? "
+        args = (plot_id,)
+    sql += "ORDER BY r.apply_time DESC, r.id DESC LIMIT ?"
+    rows = rows_to_dicts(conn.execute(sql, (*args, limit)).fetchall())
+    today = date.today()
+    return [_compliance_row(r, today) for r in rows]
+
+
+def _csv_response(filename: str, header: list[str], rows: list[list]) -> Response:
+    """生成带 UTF-8 BOM 的 CSV（Excel 打开中文不乱码）。"""
+    buf = io.StringIO(newline="")
+    writer = csv.writer(buf)
+    writer.writerow(header)
+    writer.writerows(rows)
+    body = (chr(0xFEFF) + buf.getvalue()).encode("utf-8")
+    return Response(
+        content=body,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def _qr_payload(trace_code: str) -> str:
@@ -240,37 +354,18 @@ def list_pesticide_records(plot_id: int | None = None, limit: int = Query(100, l
 @app.post("/api/pesticide-records")
 def create_pesticide_record(payload: PesticideRecordIn):
     with get_conn() as conn:
-        _plot_or_404(conn, payload.plot_id)
-        known = PESTICIDE_BY_CAS.get(payload.cas_no or "") or PESTICIDE_BY_NAME.get(payload.pesticide_name)
-        if not known:
-            raise HTTPException(
-                400,
-                "农药名称/CAS 编号未在登记库中找到，请核对包装信息后重试（防录错校验）",
-            )
-        if payload.cas_no and known["cas_no"] != payload.cas_no:
-            raise HTTPException(400, f"CAS 编号与农药「{known['name']}」不匹配，请核对")
-
-        apply_time = payload.apply_time or _today()
-        safe_days = known["safe_interval_days"]
-        days_to_harvest = payload.days_to_harvest
-        cur = conn.execute(
-            "INSERT INTO pesticide_records(plot_id, pesticide_name, cas_no, dosage, dilution, "
-            "application_method, operator, apply_time, safe_interval_days, target_pest, days_to_harvest, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            (payload.plot_id, known["name"], known["cas_no"], payload.dosage or known["dosage_hint"],
-             payload.dilution, payload.application_method, payload.operator, apply_time,
-             safe_days, "、".join(known["targets"]), days_to_harvest,
-             datetime.now().isoformat(timespec="seconds")),
+        return _write_pesticide(
+            conn,
+            plot_id=payload.plot_id,
+            pesticide_name=payload.pesticide_name,
+            cas_no=payload.cas_no,
+            dosage=payload.dosage,
+            dilution=payload.dilution,
+            application_method=payload.application_method,
+            operator=payload.operator,
+            apply_time=payload.apply_time,
+            days_to_harvest=payload.days_to_harvest,
         )
-        harvest_after = (_parse_date(apply_time) + timedelta(days=safe_days)).isoformat()
-        return {
-            "id": cur.lastrowid,
-            "pesticide_name": known["name"],
-            "cas_no": known["cas_no"],
-            "safe_interval_days": safe_days,
-            "earliest_harvest_date": harvest_after,
-            "warning": f"安全间隔期 {safe_days} 天，{harvest_after} 之后方可采收",
-        }
 
 
 @app.get("/api/plots/{plot_id}/safety-status")
@@ -309,6 +404,8 @@ async def create_recognition(
         )
         result["id"] = cur.lastrowid
         result["image_url"] = url
+        result["status"] = "pending"
+        result["plot_id"] = plot_id
         return result
 
 
@@ -325,20 +422,119 @@ def create_demo_recognition(payload: DemoRecognitionIn):
              datetime.now().isoformat(timespec="seconds")),
         )
         result["id"] = cur.lastrowid
+        result["status"] = "pending"
+        result["plot_id"] = payload.plot_id
         return result
 
 
 @app.get("/api/recognitions")
-def list_recognitions(plot_id: int | None = None, limit: int = Query(50, le=300)):
+def list_recognitions(
+    plot_id: int | None = None,
+    status: str | None = None,
+    limit: int = Query(50, le=300),
+):
+    allowed = {"pending", "handled", "ignored", "false_positive"}
+    if status and status not in allowed:
+        raise HTTPException(400, f"status 取值应为 {' / '.join(sorted(allowed))}")
     with get_conn() as conn:
         sql = ("SELECT r.*, p.name AS plot_name FROM recognitions r "
                "LEFT JOIN plots p ON p.id=r.plot_id ")
-        args: tuple = ()
+        conditions: list[str] = []
+        args: list = []
         if plot_id:
-            sql += "WHERE r.plot_id=? "
-            args = (plot_id,)
+            conditions.append("r.plot_id=?")
+            args.append(plot_id)
+        if status:
+            conditions.append("r.status=?")
+            args.append(status)
+        if conditions:
+            sql += "WHERE " + " AND ".join(conditions) + " "
         sql += "ORDER BY r.created_at DESC LIMIT ?"
-        return rows_to_dicts(conn.execute(sql, (*args, limit)).fetchall())
+        args.append(limit)
+        return rows_to_dicts(conn.execute(sql, tuple(args)).fetchall())
+
+
+@app.post("/api/recognitions/{rid}/handle")
+def handle_recognition(rid: int, payload: RecognitionHandleIn):
+    """识别→处置闭环：按建议用药 / 人工清除（农事）/ 忽略 / 误判。
+
+    - pesticide：复用用药台账校验（登记库 + CAS + 安全间隔期），自动写台账并回链；
+    - operation：写一条农事记录并回链；
+    - ignore / false_positive：只改状态，不写台账。
+    处置后该识别不再出现在「未处置识别」待办中。
+    """
+    allowed = {"pesticide", "operation", "ignore", "false_positive"}
+    if payload.method not in allowed:
+        raise HTTPException(400, f"不支持的处置方式：{payload.method}")
+
+    with get_conn() as conn:
+        rec = conn.execute("SELECT * FROM recognitions WHERE id=?", (rid,)).fetchone()
+        if not rec:
+            raise HTTPException(404, "识别记录不存在")
+        if rec["status"] != "pending":
+            raise HTTPException(409, "该识别已处置，无需重复操作")
+
+        status = "handled"
+        pesticide_record_id = None
+        operation_id = None
+        summary: dict = {}
+
+        if payload.method in ("pesticide", "operation"):
+            if not rec["plot_id"]:
+                raise HTTPException(400, "该识别未关联地块，无法写入台账；请先选择地块或改用「忽略」")
+            if payload.method == "pesticide":
+                if not payload.pesticide_name and not payload.cas_no:
+                    raise HTTPException(400, "用药处置需提供药剂名称或 CAS 编号")
+                written = _write_pesticide(
+                    conn,
+                    plot_id=rec["plot_id"],
+                    pesticide_name=payload.pesticide_name or "",
+                    cas_no=payload.cas_no,
+                    dosage=payload.dosage,
+                    dilution=payload.dilution,
+                    application_method=payload.application_method,
+                    operator=payload.operator,
+                    apply_time=payload.apply_time,
+                    days_to_harvest=payload.days_to_harvest,
+                )
+                pesticide_record_id = written["id"]
+                summary = written
+            else:
+                op_date = payload.operation_date or _today()
+                detail = dict(payload.detail)
+                detail.setdefault("recognition_id", rid)
+                detail.setdefault("detected_class", rec["detected_class"])
+                cur = conn.execute(
+                    "INSERT INTO farm_operations(plot_id, operation_type, operator, operation_date, detail, images, created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (rec["plot_id"], payload.operation_type or "人工清除", payload.operator, op_date,
+                     json.dumps(detail, ensure_ascii=False), json.dumps(payload.images),
+                     datetime.now().isoformat(timespec="seconds")),
+                )
+                operation_id = cur.lastrowid
+                summary = {"id": operation_id, "operation_type": payload.operation_type or "人工清除",
+                           "operation_date": op_date}
+        elif payload.method == "ignore":
+            status = "ignored"
+        else:  # false_positive
+            status = "false_positive"
+
+        handled_at = datetime.now().isoformat(timespec="seconds")
+        conn.execute(
+            "UPDATE recognitions SET status=?, handled_at=?, handle_method=?, handle_note=?, "
+            "pesticide_record_id=?, operation_id=? WHERE id=?",
+            (status, handled_at, payload.method, payload.note,
+             pesticide_record_id, operation_id, rid),
+        )
+        return {
+            "id": rid,
+            "status": status,
+            "handle_method": payload.method,
+            "handled_at": handled_at,
+            "pesticide_record_id": pesticide_record_id,
+            "operation_id": operation_id,
+            "summary": summary,
+        }
 
 
 @app.get("/api/pests")
@@ -427,6 +623,12 @@ def get_trace(code: str):
             "SELECT * FROM pesticide_records WHERE plot_id=? AND apply_time <= ? "
             "ORDER BY apply_time DESC LIMIT 1",
             (batch["plot_id"], batch["harvest_date"])).fetchone()
+        pesticides = rows_to_dicts(conn.execute(
+            "SELECT pesticide_name, cas_no, operator, apply_time, safe_interval_days "
+            "FROM pesticide_records WHERE plot_id=? AND apply_time <= ? "
+            "ORDER BY apply_time DESC LIMIT 12",
+            (batch["plot_id"], batch["harvest_date"])).fetchall())
+        pesticides = [_compliance_row(p) for p in pesticides]
         hashes = rows_to_dicts(conn.execute(
             "SELECT record_hash, prev_hash, payload_summary, created_at FROM trace_hash_log "
             "WHERE batch_id=? ORDER BY id", (batch["id"],)).fetchall())
@@ -455,6 +657,7 @@ def get_trace(code: str):
             "care": {
                 "operations": ops,
                 "pesticide_count": pesticide_count,
+                "pesticides": pesticides,
                 "last_pesticide": last_p,
                 "safety_state": safety_state,
             },
@@ -464,6 +667,7 @@ def get_trace(code: str):
                 "logistics": batch["logistics"],
             },
             "hash_chain": hashes,
+            "chain_verify": verify_chain(conn, batch_id=batch["id"]),
         }
 
 
@@ -515,15 +719,34 @@ def todos():
 
         recent = conn.execute(
             "SELECT detected_class, COUNT(*) AS c FROM recognitions "
-            "WHERE created_at >= ? AND detected_class != '健康叶片' GROUP BY detected_class ORDER BY c DESC LIMIT 2",
+            "WHERE created_at >= ? AND detected_class != '健康叶片' AND status='pending' "
+            "GROUP BY detected_class ORDER BY c DESC LIMIT 2",
             ((datetime.now() - timedelta(days=7)).isoformat(timespec="seconds"),),
         ).fetchall()
         for r in recent:
             items.append({
                 "level": "serious" if r["c"] >= 5 else "warning",
-                "title": f"近 7 天「{r['detected_class']}」识别 {r['c']} 次",
-                "detail": "病虫害有集中发生趋势，建议安排专项防治",
-                "action": "查看识别记录",
+                "type": "recognition",
+                "pest_class": r["detected_class"],
+                "count": r["c"],
+                "title": f"近 7 天「{r['detected_class']}」未处置识别 {r['c']} 次",
+                "detail": "病虫害有集中发生趋势，请前往识别记录处置",
+                "action": "去处置",
+            })
+
+        # 天气联动：连续降雨/高湿时提示霜疫霉病风险（失败静默）
+        try:
+            risk = weather.get_pest_risk()
+        except Exception:
+            risk = None
+        if risk:
+            items.append({
+                "level": "serious" if risk["level"] == "high" else "warning",
+                "type": "weather",
+                "pest_class": risk["pest"],
+                "title": f"天气预警：未来利于「{risk['pest']}」发生",
+                "detail": risk["detail"],
+                "action": "雨前预防",
             })
 
         if not items:
@@ -545,6 +768,9 @@ def dashboard_summary():
         recognitions_7d = conn.execute(
             "SELECT COUNT(*) c FROM recognitions WHERE created_at >= ?",
             ((datetime.now() - timedelta(days=7)).isoformat(timespec="seconds"),)).fetchone()["c"]
+        handled_7d = conn.execute(
+            "SELECT COUNT(*) c FROM recognitions WHERE created_at >= ? AND status != 'pending'",
+            ((datetime.now() - timedelta(days=7)).isoformat(timespec="seconds"),)).fetchone()["c"]
         blocked = conn.execute("SELECT COUNT(*) c FROM batches WHERE status='blocked'").fetchone()["c"]
         released = conn.execute("SELECT COUNT(*) c FROM batches WHERE status='released'").fetchone()["c"]
 
@@ -562,10 +788,47 @@ def dashboard_summary():
             "plots": plots["c"], "area_mu": round(plots["a"] or 0, 1), "trees": plots["t"] or 0,
             "pesticide_applications_30d": applications_30d,
             "recognitions_7d": recognitions_7d,
+            "recognition_handled_7d": handled_7d,
+            "recognition_disposal_rate": round(handled_7d / recognitions_7d, 4) if recognitions_7d else 0.0,
             "blocked_batches": blocked, "released_batches": released,
             "yield_2026_kg": round(yield_2026, 0),
             "unsafe_plots": unsafe_plots,
         }
+
+
+@app.get("/api/dashboard/compliance")
+def dashboard_compliance(plot_id: int | None = None, limit: int = Query(200, le=500)):
+    with get_conn() as conn:
+        rows = _compliance_rows(conn, plot_id, limit)
+        return {"as_of": _today(), "count": len(rows), "rows": rows}
+
+
+@app.get("/api/dashboard/compliance.csv")
+def dashboard_compliance_csv(plot_id: int | None = None, limit: int = Query(500, le=500)):
+    with get_conn() as conn:
+        rows = _compliance_rows(conn, plot_id, limit)
+    header = [
+        "地块", "农药名称", "CAS编号", "施药日期", "安全间隔期(天)", "最早采收日期",
+        "剩余天数", "状态", "施药方式", "剂量", "操作人", "目标病虫害",
+    ]
+    body = [[
+        r.get("plot_name") or "", r.get("pesticide_name") or "", r.get("cas_no") or "",
+        r.get("apply_time") or "", r.get("safe_interval_days") or "",
+        r.get("earliest_harvest_date") or "",
+        "" if r.get("days_remaining") is None else r["days_remaining"],
+        r.get("compliance_label") or "", r.get("application_method") or "",
+        r.get("dosage") or "", r.get("operator") or "", r.get("target_pest") or "",
+    ] for r in rows]
+    return _csv_response("pesticide_compliance.csv", header, body)
+
+
+@app.get("/api/weather/pest-risk")
+def weather_pest_risk():
+    return {
+        "enabled": config.WEATHER_ENABLED,
+        "location": config.WEATHER_LOCATION,
+        "risk": weather.get_pest_risk(),
+    }
 
 
 @app.get("/api/dashboard/yield-trend")

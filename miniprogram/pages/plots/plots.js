@@ -1,9 +1,11 @@
 const api = require('../../utils/api');
+const font = require('../../utils/font');
 
 Page({
-  data: { plots: [], loading: true, error: '' },
+  data: { plots: [], loading: true, error: '', fontClass: '' },
 
   onShow() {
+    this.setData({ fontClass: font.fontClass() });
     this.load();
   },
 

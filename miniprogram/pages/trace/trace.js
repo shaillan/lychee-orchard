@@ -1,14 +1,20 @@
 const api = require('../../utils/api');
+const font = require('../../utils/font');
 const { extractCode } = require('../../utils/util');
 
 Page({
-  data: { code: '', trace: null, qrcodeUrl: '', loading: false, error: '' },
+  data: { code: '', trace: null, qrcodeUrl: '', loading: false, error: '', fontClass: '' },
 
   onLoad(options) {
+    this.setData({ fontClass: font.fontClass() });
     if (options && options.code) {
       this.setData({ code: decodeURIComponent(options.code) });
       this.load();
     }
+  },
+
+  onShow() {
+    this.setData({ fontClass: font.fontClass() });
   },
 
   onInput(e) {
@@ -39,9 +45,17 @@ Page({
     this.setData({ loading: true, error: '', trace: null });
     api.request('/api/trace/' + encodeURIComponent(code))
       .then(t => {
+        const cv = t.chain_verify || {};
+        const badIds = (cv.tampered || []).concat(cv.broken || []);
         const trace = Object.assign({}, t, {
           statusText: t.status === 'released' ? '已放行' : '已拦截',
           statusClass: t.status === 'released' ? 'good' : 'critical',
+          chainBadgeText: cv.valid
+            ? '链校验通过 · ' + (cv.total || 0) + ' 条'
+            : '链校验失败 · 第 ' + badIds.join('、') + ' 条',
+          chainBadgeClass: cv.valid ? 'good' : 'critical',
+          legacyNote: (cv.legacy || []).length
+            ? cv.legacy.length + ' 条历史记录未存原文，未参与重算' : '',
           hash_chain: (t.hash_chain || []).map(h => Object.assign({}, h, {
             short: (h.record_hash || '').slice(0, 16)
           }))

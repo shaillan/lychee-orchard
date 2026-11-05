@@ -1,4 +1,4 @@
-<view class="wrap">
+<view class="wrap {{fontClass}}">
   <view class="hero">
     <view class="hero-title">智慧果园管家</view>
     <view class="hero-sub">东风荔枝果园 · 从田间到餐桌</view>
@@ -19,6 +19,16 @@
     </view>
   </view>
 
+  <view class="card">
+    <view class="kv" style="align-items:center">
+      <view>
+        <view class="h2" style="margin:0">大字模式</view>
+        <view class="small muted">放大字号，方便田间查看</view>
+      </view>
+      <switch checked="{{bigFont}}" color="#1f6f4a" bindchange="onFontToggle" />
+    </view>
+  </view>
+
   <view class="h2">今日待办</view>
 
   <view wx:if="{{loading}}" class="card muted">加载中…</view>
@@ -28,6 +38,9 @@
     <view wx:for="{{items}}" wx:key="title" class="alert {{item.level}}">
       <view class="al-title">{{item.title}}</view>
       <view class="al-detail">{{item.detail}}</view>
+      <view wx:if="{{item.type === 'recognition'}}" class="btn ghost small mt" bindtap="goScan">去处置</view>
+      <view wx:elif="{{item.type === 'weather'}}" class="btn ghost small mt" bindtap="goScan">去拍照识别</view>
+      <view wx:elif="{{item.action}}" class="small muted mt">{{item.action}}</view>
     </view>
   </block>
 </view>

@@ -1,4 +1,4 @@
-<view class="wrap">
+<view class="wrap {{fontClass}}">
   <view wx:if="{{loading}}" class="card muted">加载中…</view>
   <view wx:elif="{{error}}" class="card error">{{error}}</view>
 
