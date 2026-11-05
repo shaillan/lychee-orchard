@@ -34,6 +34,7 @@ function decorate(r) {
 
   let sourceLabel = '本地模拟（未配置 AI Key）';
   if (r.source === 'demo') sourceLabel = '演示模式';
+  else if (String(r.source || '').indexOf('mock_fallback') === 0) sourceLabel = '云端调用失败，已降级本地模拟';
   else if (!r.is_mock) sourceLabel = '云端 AI · ' + (r.source || '');
 
   const ra = s.recommended_action || 'none';

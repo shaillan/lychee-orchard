@@ -30,20 +30,45 @@ _load_dotenv(BASE_DIR / ".env")
 # ---------------------------------------------------------------------------
 # 病虫害识别
 # ---------------------------------------------------------------------------
-# auto：有 DASHSCOPE_API_KEY 走通义千问，其次 VISION_API_URL，最后本地模拟
-# dashscope / custom / mock：强制指定
+# auto：有云端 Key 走云端视觉 API，其次自定义 VISION_API_URL，最后本地模拟
+# api / dashscope：OpenAI 兼容的云端视觉接口（智谱 GLM / 通义千问 / 豆包 / 硅基流动…）
+# custom / mock：强制指定
 VISION_PROVIDER = os.environ.get("VISION_PROVIDER", "auto").strip().lower()
 
+# 兼容旧变量名：DASHSCOPE_* 仍可用，新配置建议写 VISION_*
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY", "").strip()
-DASHSCOPE_BASE_URL = os.environ.get(
-    "DASHSCOPE_BASE_URL",
-    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-).strip()
-VISION_MODEL = os.environ.get("VISION_MODEL", "qwen-vl-plus").strip()
+DASHSCOPE_BASE_URL = os.environ.get("DASHSCOPE_BASE_URL", "").strip()
+
+_ZHIPU_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+_DASHSCOPE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+
+VISION_API_KEY = os.environ.get("VISION_API_KEY", "").strip() or DASHSCOPE_API_KEY
+
+# 端点优先级：VISION_BASE_URL > 旧 DASHSCOPE_BASE_URL > 按旧 Key 推断 > 智谱（默认免费）
+if os.environ.get("VISION_BASE_URL", "").strip():
+    VISION_BASE_URL = os.environ["VISION_BASE_URL"].strip()
+elif DASHSCOPE_BASE_URL:
+    VISION_BASE_URL = DASHSCOPE_BASE_URL
+elif DASHSCOPE_API_KEY:
+    VISION_BASE_URL = _DASHSCOPE_URL
+else:
+    VISION_BASE_URL = _ZHIPU_URL
+
+# 模型名留空时按端点自动选：智谱 → glm-4.6v-flash（免费、支持 base64），其余 → qwen-vl-plus
+_DEFAULT_MODEL = "glm-4.1v-thinking-flash" if "bigmodel" in VISION_BASE_URL else "qwen-vl-plus"
+VISION_MODEL = os.environ.get("VISION_MODEL", "").strip() or _DEFAULT_MODEL
+
+# 备选模型：主模型限流/不可用时自动切换（免费档 1305 很常见），留空则不切换
+VISION_FALLBACK_MODEL = os.environ.get("VISION_FALLBACK_MODEL", "").strip()
+
+# 图片传参格式：data_uri（默认，带 data:image/jpeg;base64, 前缀）| raw（纯 base64，个别网关要求）
+VISION_IMAGE_FORMAT = os.environ.get("VISION_IMAGE_FORMAT", "data_uri").strip().lower()
+VISION_TIMEOUT = float(os.environ.get("VISION_TIMEOUT", "45"))
 
 # 自定义视觉 API（约定：POST {image_base64, plot_id} -> {class, confidence, bbox}）
-VISION_API_URL = os.environ.get("VISION_API_URL", "").strip()
-VISION_API_KEY = os.environ.get("VISION_API_KEY", "").strip()
+# 变量名与云端 VISION_API_KEY 分开，否则 auto 模式会把自定义接口误判成云端
+VISION_CUSTOM_URL = os.environ.get("VISION_CUSTOM_URL", "").strip()
+VISION_CUSTOM_KEY = os.environ.get("VISION_CUSTOM_KEY", "").strip()
 
 # ---------------------------------------------------------------------------
 # 一物一码

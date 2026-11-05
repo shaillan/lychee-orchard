@@ -719,7 +719,8 @@ def todos():
 
         recent = conn.execute(
             "SELECT detected_class, COUNT(*) AS c FROM recognitions "
-            "WHERE created_at >= ? AND detected_class != '健康叶片' AND status='pending' "
+            "WHERE created_at >= ? AND detected_class NOT IN ('健康叶片','健康果实') "
+            "AND status='pending' "
             "GROUP BY detected_class ORDER BY c DESC LIMIT 2",
             ((datetime.now() - timedelta(days=7)).isoformat(timespec="seconds"),),
         ).fetchall()
@@ -892,7 +893,8 @@ def pest_trend(weeks: int = 12):
     for b in buckets.values():
         for k, v in b.items():
             totals[k] = totals.get(k, 0) + v
-    top = [k for k, _ in sorted(totals.items(), key=lambda x: -x[1]) if k != "健康叶片"][:4]
+    top = [k for k, _ in sorted(totals.items(), key=lambda x: -x[1])
+           if k not in ("健康叶片", "健康果实")][:4]
     series = [{"name": k, "data": [buckets[m].get(k, 0) for m in keys]} for k in top]
     return {"weeks": keys, "series": series}
 
@@ -904,7 +906,7 @@ def pest_heatmap():
         rows = conn.execute(
             "SELECT p.name AS plot_name, r.detected_class, COUNT(*) AS c "
             "FROM recognitions r JOIN plots p ON p.id=r.plot_id "
-            "WHERE r.created_at >= ? AND r.detected_class != '健康叶片' "
+            "WHERE r.created_at >= ? AND r.detected_class NOT IN ('健康叶片','健康果实') "
             "GROUP BY p.name, r.detected_class", (start,)).fetchall()
         plots = [r["name"] for r in conn.execute("SELECT name FROM plots ORDER BY id").fetchall()]
 

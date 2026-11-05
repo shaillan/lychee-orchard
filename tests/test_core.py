@@ -20,7 +20,12 @@ os.environ["WEATHER_ENABLED"] = "0"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from backend.ai_service import _normalize_class, _normalize_confidence  # noqa: E402
+from backend.ai_service import (  # noqa: E402
+    _image_url,
+    _normalize_class,
+    _normalize_confidence,
+    _remote_recognize,
+)
 from backend.rules import build_suggestion  # noqa: E402
 from backend.traceability import make_batch_no  # noqa: E402
 from backend.weather import evaluate_risk  # noqa: E402
@@ -58,6 +63,28 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(suggestion["kind"], "无异常")
         self.assertEqual(suggestion["pesticides"], [])
 
+    def test_healthy_fruit(self):
+        # 健康果实必须有独立类别，否则健康果照片会被硬塞进某个病害
+        suggestion = build_suggestion("健康果实", 0.93)
+        self.assertEqual(suggestion["kind"], "无异常")
+        self.assertEqual(suggestion["pesticides"], [])
+        self.assertEqual(suggestion["recommended_action"], "none")
+
+    def test_low_confidence_blocks_action(self):
+        suggestion = build_suggestion("荔枝炭疽病", 0.6)
+        self.assertTrue(suggestion["low_confidence"])
+        self.assertEqual(suggestion["recommended_action"], "none")
+        self.assertTrue(any("置信度" in w for w in suggestion["warnings"]))
+
+    def test_disease_wording(self):
+        # 病害不能说「虫口基数」
+        disease = build_suggestion("荔枝炭疽病", 0.9)
+        self.assertIn("病源基数", disease["action_reason"])
+        self.assertNotIn("虫口", disease["action_reason"])
+
+        insect = build_suggestion("荔枝蝽", 0.9)
+        self.assertIn("虫口基数", insect["action_reason"])
+
     def test_recommended_action_high_risk(self):
         # 高风险且有合规药剂 → 建议用药
         suggestion = build_suggestion("荔枝蒂蛀虫", 0.92, days_to_harvest=30)
@@ -77,6 +104,8 @@ class RulesTest(unittest.TestCase):
     def test_normalize_vlm_class(self):
         self.assertEqual(_normalize_class("荔枝蒂蛀虫（Litchi fruit borer）"), "荔枝蒂蛀虫")
         self.assertEqual(_normalize_class("healthy leaf"), "健康叶片")
+        self.assertEqual(_normalize_class("healthy fruit"), "健康果实")
+        self.assertEqual(_normalize_class("健康果实"), "健康果实")
         self.assertEqual(_normalize_class("霜疫霉"), "荔枝霜疫霉病")
         self.assertEqual(_normalize_class("完全无关的物体"), "无法判断")
 
@@ -85,6 +114,64 @@ class RulesTest(unittest.TestCase):
         self.assertAlmostEqual(_normalize_confidence(93), 0.93)
         self.assertAlmostEqual(_normalize_confidence(0.8), 0.8)
         self.assertAlmostEqual(_normalize_confidence("abc"), 0.0)
+
+
+class VisionProviderTest(unittest.TestCase):
+    """云端识别走 OpenAI 兼容协议：换服务商只改配置，不改代码。"""
+
+    def test_image_url_formats(self):
+        from backend import config
+
+        old = config.VISION_IMAGE_FORMAT
+        try:
+            config.VISION_IMAGE_FORMAT = "data_uri"
+            self.assertTrue(_image_url(b"\xff\xd8").startswith("data:image/jpeg;base64,"))
+            config.VISION_IMAGE_FORMAT = "raw"
+            self.assertFalse(_image_url(b"\xff\xd8").startswith("data:"))
+        finally:
+            config.VISION_IMAGE_FORMAT = old
+
+    def test_payload_is_openai_compatible(self):
+        from unittest import mock
+
+        from backend import config
+
+        fake = mock.Mock()
+        fake.json.return_value = {"choices": [{"message": {"content": (
+            '{"evidence":"果实表面有针尖状蛀孔，孔口带褐色虫粪",'
+            '"class":"荔枝蒂蛀虫","confidence":0.91}'
+        )}}]}
+        with mock.patch("httpx.post", return_value=fake) as post:
+            pest_class, confidence, model_used = _remote_recognize(b"\xff\xd8jpeg")
+
+        self.assertEqual(pest_class, "荔枝蒂蛀虫")
+        self.assertAlmostEqual(confidence, 0.91)
+        self.assertEqual(model_used, config.VISION_MODEL)
+
+        call = post.call_args
+        self.assertEqual(call.args[0], config.VISION_BASE_URL)
+        self.assertEqual(call.kwargs["headers"]["Authorization"], f"Bearer {config.VISION_API_KEY}")
+        payload = call.kwargs["json"]
+        self.assertEqual(payload["model"], config.VISION_MODEL)
+        # 智谱对多模态请求带 max_tokens 会报 1210，必须不带
+        self.assertNotIn("max_tokens", payload)
+        content = payload["messages"][1]["content"]
+        self.assertEqual([part["type"] for part in content], ["image_url", "text"])
+
+    def test_disease_without_evidence_is_downgraded(self):
+        """防误报硬闸门：模型说没看到病征（或干脆不写证据）时，不许给出病害结论。"""
+        from unittest import mock
+
+        for content in (
+            '{"class":"荔枝炭疽病","confidence":0.903,"evidence":"未见异常"}',
+            '{"class":"荔枝炭疽病","confidence":0.9}',
+        ):
+            fake = mock.Mock()
+            fake.json.return_value = {"choices": [{"message": {"content": content}}]}
+            with mock.patch("httpx.post", return_value=fake):
+                pest_class, confidence, _ = _remote_recognize(b"\xff\xd8jpeg")
+            self.assertEqual(pest_class, "无法判断", content)
+            self.assertLessEqual(confidence, 0.3)
 
 
 class WeatherTest(unittest.TestCase):

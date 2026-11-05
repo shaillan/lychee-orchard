@@ -114,6 +114,14 @@ PESTS: dict[str, dict] = {
         "timing": "建议保持常规巡检频次。",
         "notes": "继续做好水肥管理与定期巡检，发现异常及时拍照记录。",
     },
+    "健康果实": {
+        "latin": "-",
+        "kind": "无异常",
+        "risk": "无",
+        "symptoms": "果皮着色均匀、有光泽，无褐色凹陷病斑、蛀孔与霉层，未见明显受害症状。",
+        "timing": "建议保持常规巡检频次，采收前重点检查果蒂与果面。",
+        "notes": "继续做好水肥管理与定期巡检；果面水珠、自然龟裂与未转色斑块属正常现象。",
+    },
     "无法判断": {
         "latin": "-",
         "kind": "未知",
@@ -124,15 +132,21 @@ PESTS: dict[str, dict] = {
     },
 }
 
+# 表示「未见异常」的类别，统计与待办里需要与病虫害分开
+HEALTHY_CLASSES = ("健康叶片", "健康果实")
+
 # 可用于模拟/演示的病虫害类别（排除健康与兜底）
-PEST_CLASSES = [k for k in PESTS if k not in ("健康叶片", "无法判断")]
+PEST_CLASSES = [k for k in PESTS if k not in HEALTHY_CLASSES + ("无法判断",)]
 
 # 用于模拟识别的常见类别权重（演示用，越靠前越常见）
 MOCK_CLASS_POOL = [
     "荔枝蒂蛀虫", "荔枝霜疫霉病", "荔枝炭疽病", "荔枝蝽",
     "荔枝蒂蛀虫", "荔枝霜疫霉病", "荔枝瘿螨", "荔枝尺蠖",
-    "荔枝炭疽病", "健康叶片",
+    "荔枝炭疽病", "健康叶片", "健康果实",
 ]
+
+# 低于该置信度的病虫害结论不做自动处置建议，提示人工复核
+LOW_CONFIDENCE = 0.65
 
 
 def lookup_pesticide(name: str | None = None, cas_no: str | None = None) -> dict | None:
@@ -152,7 +166,8 @@ def recommended_pesticides(pest_class: str) -> list[dict]:
 
 
 def _pick_action(
-    risk: str, safe_opts: list[dict], all_opts: list[dict], days_to_harvest: int | None
+    risk: str, safe_opts: list[dict], all_opts: list[dict], days_to_harvest: int | None,
+    kind: str = "虫害",
 ) -> tuple[str, str]:
     """根据风险等级与可用药剂，给出建议处置方式及理由（纯规则、可解释）。
 
@@ -160,7 +175,9 @@ def _pick_action(
       - 高风险且仍有合规药剂 → 用药；
       - 高风险但临近采收/无药剂 → 人工清除；
       - 中高风险 → 人工清除等物理防治；
-      - 中风险 → 观察（忽略），虫口上升再处置。
+      - 中风险 → 观察（忽略），病情/虫口上升再处置。
+
+    kind 只影响措辞：虫害说「虫口基数」，病害说「病源基数」。
     """
     if risk == "高":
         if safe_opts:
@@ -177,11 +194,15 @@ def _pick_action(
             )
         return "operation", "该病虫害暂无可用登记药剂，建议人工清除等物理/农业防治。"
     if risk == "中高":
-        return "operation", (
-            "风险中高，建议优先人工捕杀、剪除病枝病果等物理/农业防治，"
-            "压低虫口基数后再评估是否用药。"
-        )
-    return "ignore", "风险中等，暂未达防治阈值，建议持续观察并加强巡园；虫口上升时再处置。"
+        if kind == "病害":
+            measures = "剪除病枝病果、清除病残体、改善通风透光等物理/农业防治"
+            target = "病源基数"
+        else:
+            measures = "人工捕杀、剪除虫枝虫果等物理/农业防治"
+            target = "虫口基数"
+        return "operation", f"风险中高，建议优先{measures}，压低{target}后再评估是否用药。"
+    trend = "病情" if kind == "病害" else "虫口"
+    return "ignore", f"风险中等，暂未达防治阈值，建议持续观察并加强巡园；{trend}上升时再处置。"
 
 
 def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | None = None) -> dict:
@@ -253,6 +274,13 @@ def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | 
     if days_to_harvest is not None and not safe_opts:
         warnings.append("当前距采收期过近，无可用化学药剂，请改用人工捕杀、清园等非化学措施。")
 
+    low_confidence = confidence < LOW_CONFIDENCE
+    if low_confidence:
+        warnings.append(
+            f"识别置信度仅 {confidence:.0%}，低于 {LOW_CONFIDENCE:.0%} 的自动处置阈值，"
+            "建议先人工复核或重新拍照，确认后再处置。"
+        )
+
     lines = [
         f"识别结果：{pest_class}（置信度 {confidence:.0%}，风险等级：{info['risk']}）",
         f"典型症状：{info['symptoms']}",
@@ -265,7 +293,13 @@ def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | 
         lines.append("施药前请核对农药标签登记作物与剂量，严格执行安全间隔期。")
     lines.extend(warnings)
 
-    action, action_reason = _pick_action(info["risk"], safe_opts, pesticide_opts, days_to_harvest)
+    if low_confidence:
+        # 低置信度结论只展示症状与风险，不给自动处置，避免误报被当成确诊
+        action, action_reason = "none", "识别置信度偏低，暂不建议按该结果处置，请人工复核。"
+    else:
+        action, action_reason = _pick_action(
+            info["risk"], safe_opts, pesticide_opts, days_to_harvest, info["kind"]
+        )
 
     return {
         "pest_class": pest_class,
@@ -273,6 +307,7 @@ def build_suggestion(pest_class: str, confidence: float, days_to_harvest: int | 
         "kind": info["kind"],
         "risk": info["risk"],
         "confidence": confidence,
+        "low_confidence": low_confidence,
         "summary": info["symptoms"],
         "timing": info["timing"],
         "notes": info["notes"],

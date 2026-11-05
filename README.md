@@ -5,7 +5,7 @@
 - 后端：Python FastAPI + SQLite（零配置，无需 MySQL/Redis）
 - 果农端：微信小程序（原生 WXML，`miniprogram/`）
 - 管理端：原生 HTML/CSS/JS + ECharts 看板（`frontend/`）
-- AI 识别：通义千问 Qwen-VL（接入即用），未配置 Key 时自动降级本地模拟，演示不中断
+- AI 识别：任意 OpenAI 兼容的视觉大模型（默认智谱 GLM-4.6V-Flash，免费；也可换千问 / 豆包 / 硅基流动），未配置 Key 时自动降级本地模拟，演示不中断
 - 防治建议：本地农药/安全间隔期规则库生成，AI 不直出用药建议
 
 ## 四个通关点对应实现
@@ -13,7 +13,7 @@
 | 赛道要求 | 实现 |
 |---|---|
 | 果园电子档案 | 地块分区 / 农事记录 / 用药台账 / 产量趋势（小程序「我的果园」+ 地块详情） |
-| 病虫害拍照识别 | 拍照压缩上传 → Qwen-VL 识别 → 规则库生成防治建议 + 安全间隔期校验；识别后可「按建议用药 / 人工清除 / 误判 / 忽略」→ 自动写台账并销项（处置闭环）；识别记录页可回看并补处置 |
+| 病虫害拍照识别 | 拍照压缩上传 → 视觉大模型识别 → 规则库生成防治建议 + 安全间隔期校验；识别后可「按建议用药 / 人工清除 / 误判 / 忽略」→ 自动写台账并销项（处置闭环）；识别记录页可回看并补处置 |
 | 品质溯源 | 一物一码（批次码 + 二维码），扫码展示「种植—管护—销售」三段式 + 哈希存证链；可打印批次质量合格证 |
 | 农事数据看板 | 产量趋势 / 用药堆叠 / 虫害周趋势 / 虫害热力图 + 安全间隔期拦截警示 + 用药合规明细表（可导出 CSV） |
 
@@ -50,22 +50,50 @@ HOST=0.0.0.0 python run.py
 
 把 `miniprogram/utils/config.js` 里的 `BASE_URL` 改成电脑的局域网 IP（如 `http://192.168.1.10:8000`），手机与电脑连同一 Wi-Fi。
 
-## 接入真实 AI 识别（通义千问 Qwen-VL）
+## 接入真实 AI 识别
 
-1. 在[阿里云百炼](https://bailian.console.aliyun.com/)开通服务并创建 API-KEY；
+后端调用的是 **OpenAI 兼容的 `chat/completions` 接口**，任何同类服务都能直接换，不用改代码。
+
+**默认推荐：智谱 `glm-4.1v-thinking-flash`（免费）**
+
+1. 在[智谱开放平台](https://open.bigmodel.cn/)手机号注册 → 「API Keys」创建密钥；
 2. 复制 `.env.example` 为 `.env`，填写：
 
 ```bash
-DASHSCOPE_API_KEY=sk-xxxxxxxx
-VISION_MODEL=qwen-vl-plus
+VISION_API_KEY=你的智谱Key
+VISION_BASE_URL=https://open.bigmodel.cn/api/paas/v4/chat/completions
+VISION_MODEL=glm-4.1v-thinking-flash
+VISION_FALLBACK_MODEL=glm-4.6v-flash
 VISION_PROVIDER=auto
 ```
 
-3. 重启后端。识别结果会标注来源「云端 AI · dashscope:qwen-vl-plus」；
+> - `glm-4v-flash`（旧版）**不支持 base64 传图**，不能用；
+> - `glm-4.6v-flash` 实测长期返回 `1305 该模型当前访问量过大`，所以默认用 `glm-4.1v-thinking-flash`，并把它配成备选；
+> - 遇到 429/1305 会自动退避重试（1.5s、3s），仍失败才切换备选模型，最后才降级本地模拟。
+
+3. 重启后端。识别结果会标注来源「云端 AI · zhipu:glm-4.6v-flash」；
    调用失败或未配置 Key 时自动降级为本地模拟，并在结果中标注「本地模拟」。
 
-> 识别输出被提示词约束在知识库的 7 个类别内（荔枝蒂蛀虫、荔枝蝽、霜疫霉病、炭疽病、瘿螨、尺蠖、健康叶片），
+**换其它服务商**只改 `VISION_BASE_URL` / `VISION_MODEL`：
+
+| 服务商 | `VISION_BASE_URL` | `VISION_MODEL` |
+|---|---|---|
+| 智谱（免费） | `https://open.bigmodel.cn/api/paas/v4/chat/completions` | `glm-4.1v-thinking-flash` |
+| 通义千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions` | `qwen-vl-plus` |
+| 火山豆包 | `https://ark.cn-beijing.volces.com/api/v3/chat/completions` | 你创建的推理接入点 ID |
+| 硅基流动 | `https://api.siliconflow.cn/v1/chat/completions` | `Qwen/Qwen2.5-VL-7B-Instruct` |
+| 本地 Ollama | `http://127.0.0.1:11434/v1/chat/completions` | `qwen2.5vl:7b` |
+
+个别网关要求纯 base64（不带 `data:image/jpeg;base64,` 前缀）时，设 `VISION_IMAGE_FORMAT=raw`。
+
+> 旧变量名 `DASHSCOPE_API_KEY` / `DASHSCOPE_BASE_URL` 仍然兼容，但推荐统一用 `VISION_*`。
+
+> 识别输出被提示词约束在知识库的 8 个类别内（荔枝蒂蛀虫、荔枝蝽、霜疫霉病、炭疽病、瘿螨、尺蠖、健康叶片、健康果实），
 > 无法判断时返回「无法判断」并禁止给出用药建议。**用药建议始终由 `backend/rules.py` 规则库生成**。
+>
+> 三道防误报闸门：① 模型必须先写 `evidence`（看到的病斑形态）再给类别，没写出可辨识病征的病虫害结论
+> 会被后端降级为「无法判断」；② 水珠、反光、果皮天然龟裂、未转色斑块明确不算病斑；
+> ③ 置信度低于 65% 时只展示结果、不给自动处置建议，提示人工复核。
 
 ## 一物一码
 
@@ -201,5 +229,6 @@ lychee-orchard/
 ## 常见问题
 
 - **小程序请求失败**：确认后端已启动、`utils/config.js` 地址正确，并在开发者工具关闭域名校验。
-- **识别显示「本地模拟」**：未配置 `DASHSCOPE_API_KEY` 或云端调用失败，检查 `.env` 后重启。
+- **识别显示「本地模拟」**：未配置 `VISION_API_KEY` 或云端调用失败，检查 `.env` 后重启；后端日志里会有降级原因（如 `mock_fallback(HTTPStatusError)`）。
+- **云端返回 400 / 1210**：优先检查模型是否支持 base64 传图（`glm-4v-flash` 不支持，用 `glm-4.6v-flash`），以及 `VISION_BASE_URL` 是否为 OpenAI 兼容端点。
 - **二维码在手机上打不开 H5**：默认二维码内容是溯源码本身；需要 H5 链接时配置 `QR_BASE_URL`，且该域名需公网可访问。
