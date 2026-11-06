@@ -20,7 +20,18 @@
 
   <div class="content">
     <!-- 今日待办 -->
-    <div id="view-todo"></div>
+    <div id="view-todo">
+      <div class="card" id="regionCard">
+        <h2>天气地区</h2>
+        <div class="small muted" id="regionNow">当前：加载中…</div>
+        <label class="field mt"><span>地区名（如 广州）</span>
+          <input id="regionInput" placeholder="输入城市名，如 广州">
+        </label>
+        <button class="btn block" id="regionBtn" onclick="saveRegion()">保存地区</button>
+        <div id="regionMsg" class="mt"></div>
+      </div>
+      <div id="todoList"></div>
+    </div>
     <!-- 我的果园 -->
     <div id="view-plots" class="hidden"></div>
     <!-- 拍照识别 -->
@@ -42,12 +53,13 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const api = {
   async get(u){ const r = await fetch(u); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); },
-  async post(u, body, isForm){ const r = await fetch(u, { method:'POST', headers: isForm?undefined:{'Content-Type':'application/json'}, body: isForm?body:JSON.stringify(body) }); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); }
+  async post(u, body, isForm){ const r = await fetch(u, { method:'POST', headers: isForm?undefined:{'Content-Type':'application/json'}, body: isForm?body:JSON.stringify(body) }); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); },
+  async put(u, body){ const r = await fetch(u, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); }
 };
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // 识别来源：mock_fallback 要区分「没配 Key」和「云端调用失败」
 const sourceText = r => {
-  const s = String(r.source || '');
+  const s = String(r.source || '').split('#')[0];  // 去掉 #confirm_false 之类的内部后缀
   if (s === 'demo') return '演示模式';
   if (s.indexOf('mock_fallback') === 0) return '云端调用失败，已降级本地模拟';
   if (r.is_mock) return '本地模拟（未配置 AI Key）';
@@ -72,16 +84,49 @@ function toggleFont(){
 function switchTab(tab){
   $$('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   ['todo','plots','scan','form'].forEach(t=>$('#view-'+t).classList.toggle('hidden', t!==tab));
-  if(tab==='todo') loadTodos();
+  if(tab==='todo'){ loadRegion(); loadTodos(); }
   if(tab==='plots') loadPlots();
   if(tab==='scan') loadPests();
   if(tab==='form') loadFormPlots();
 }
 $$('.tabbar button').forEach(b=>b.addEventListener('click', ()=>switchTab(b.dataset.tab)));
 
+/* ---------- 天气地区 ---------- */
+async function loadRegion(){
+  const now = $('#regionNow');
+  if(!now) return;
+  try {
+    const info = await api.get('/api/weather/region');
+    const r = info.region || {};
+    const label = r.label || r.name || '未设置';
+    now.textContent = '当前：' + label + (r.source === 'db' ? '（自定义）' : '（默认，来自 .env）');
+  } catch(e){ now.textContent = '当前：地区信息加载失败'; }
+}
+
+async function saveRegion(){
+  const btn = $('#regionBtn'), msg = $('#regionMsg');
+  const name = ($('#regionInput').value || '').trim();
+  if(!name){
+    msg.innerHTML = '<div class="alert critical"><div class="al-detail">请输入地区名</div></div>';
+    return;
+  }
+  btn.disabled = true;
+  msg.innerHTML = '<div class="small muted">解析并保存中…</div>';
+  try {
+    const res = await api.put('/api/weather/region', { name });
+    const r = res.region || {};
+    $('#regionInput').value = '';
+    msg.innerHTML = `<div class="alert good"><div class="al-detail">已设置：${esc(r.label || r.name)}</div></div>`;
+    await loadRegion();
+    await loadTodos();
+  } catch(e){
+    msg.innerHTML = `<div class="alert critical"><div class="al-detail">${esc(e.message)}</div></div>`;
+  } finally { btn.disabled = false; }
+}
+
 /* ---------- 今日待办 ---------- */
 async function loadTodos(){
-  const el = $('#view-todo');
+  const el = $('#todoList');
   try {
     const items = await api.get('/api/todos');
     el.innerHTML = items.map(i=>`
@@ -275,6 +320,17 @@ function showRecognition(r, el){
          <div class="al-detail">${esc(s.action_reason)}</div>
        </div>` : '';
   const statusBadge = pending ? '' : `<div class="mt"><span class="pill good"><span class="dot"></span>已处置</span></div>`;
+  // 知识库结构化字段（旧记录可能没有，全部兜底为空）
+  const hostParts = (s.host_parts || []).join('、');
+  const diff = s.differential || {};
+  const confusable = (diff.confusable || []).join('、');
+  const distinguishing = (diff.distinguishing || []).join('；');
+  const nonChem = s.non_chemical || [];
+  const verify = (s.verification || {}).status || '';
+  const verifyText = { confirmed:'已通过', rejected:'未通过，已降级', unavailable:'复核不可用（保留首轮）' }[verify] || '';
+  const verifyPill = verifyText
+    ? `<span class="pill ${verify==='confirmed'?'good':(verify==='rejected'?'serious':'neutral')}">二次确认：${esc(verifyText)}</span>`
+    : '';
   let actionButtons = '';
   if (pending && recommend === 'none') {
     actionButtons = `
@@ -298,13 +354,16 @@ function showRecognition(r, el){
       <h2>识别结果 <span class="pill ${kindCls}"><span class="dot"></span>${esc(s.pest_class)}</span></h2>
       <div class="kv"><span class="k">置信度</span><span class="v">${(r.confidence*100).toFixed(1)}%</span></div>
       <div class="kv"><span class="k">风险等级</span><span class="v">${esc(s.risk)}（${esc(s.kind)}）</span></div>
+      ${hostParts ? `<div class="kv"><span class="k">危害部位</span><span class="v">${esc(hostParts)}</span></div>` : ''}
       <div class="mt small muted">${s.latin?esc(s.latin):''}</div>
       <div class="mt" style="white-space:pre-line">${esc(s.text)}</div>
+      ${confusable ? `<div class="alert warning mt"><div class="al-title">易混淆：${esc(confusable)}</div><div class="al-detail">${esc(distinguishing)}</div></div>` : ''}
+      ${nonChem.length ? `<div class="alert good mt"><div class="al-title">非化学措施</div><div class="al-detail">${nonChem.map(m=>`· ${esc(m)}`).join('<br>')}</div></div>` : ''}
       <div class="mt">${pestPills}</div>
       ${warns}
       ${recommendHtml}
       ${actions}
-      <div class="mt small muted">识别来源：${esc(sourceText(r))}</div>
+      <div class="mt small muted">识别来源：${esc(sourceText(r))} ${verifyPill}</div>
     </div>`;
 }
 

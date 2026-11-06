@@ -27,6 +27,13 @@ def _load_dotenv(path: Path) -> None:
 
 _load_dotenv(BASE_DIR / ".env")
 
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, str(default)).strip())
+    except ValueError:
+        return default
+
 # ---------------------------------------------------------------------------
 # 病虫害识别
 # ---------------------------------------------------------------------------
@@ -54,7 +61,7 @@ elif DASHSCOPE_API_KEY:
 else:
     VISION_BASE_URL = _ZHIPU_URL
 
-# 模型名留空时按端点自动选：智谱 → glm-4.6v-flash（免费、支持 base64），其余 → qwen-vl-plus
+# 模型名留空时按端点自动选：智谱 → glm-4.1v-thinking-flash（免费），其余 → qwen-vl-plus
 _DEFAULT_MODEL = "glm-4.1v-thinking-flash" if "bigmodel" in VISION_BASE_URL else "qwen-vl-plus"
 VISION_MODEL = os.environ.get("VISION_MODEL", "").strip() or _DEFAULT_MODEL
 
@@ -63,7 +70,14 @@ VISION_FALLBACK_MODEL = os.environ.get("VISION_FALLBACK_MODEL", "").strip()
 
 # 图片传参格式：data_uri（默认，带 data:image/jpeg;base64, 前缀）| raw（纯 base64，个别网关要求）
 VISION_IMAGE_FORMAT = os.environ.get("VISION_IMAGE_FORMAT", "data_uri").strip().lower()
-VISION_TIMEOUT = float(os.environ.get("VISION_TIMEOUT", "45"))
+VISION_TIMEOUT = _env_float("VISION_TIMEOUT", 45.0)
+
+# 二次确认：首轮识别为病虫害后，再用同一模型复核图中是否真有该症状。
+# 未通过严格降级为「无法判断」；复核调用失败则保留首轮结果（fail-open）。
+VISION_CONFIRM = os.environ.get("VISION_CONFIRM", "1").strip().lower() not in (
+    "0", "false", "no", "off",
+)
+VISION_CONFIRM_TIMEOUT = _env_float("VISION_CONFIRM_TIMEOUT", 12.0)
 
 # 自定义视觉 API（约定：POST {image_base64, plot_id} -> {class, confidence, bbox}）
 # 变量名与云端 VISION_API_KEY 分开，否则 auto 模式会把自定义接口误判成云端
@@ -81,13 +95,6 @@ QR_BASE_URL = os.environ.get("QR_BASE_URL", "").strip()
 # ---------------------------------------------------------------------------
 # 天气联动（Open-Meteo，免 Key）
 # ---------------------------------------------------------------------------
-def _env_float(name: str, default: float) -> float:
-    try:
-        return float(os.environ.get(name, str(default)).strip())
-    except ValueError:
-        return default
-
-
 # 0 / false / no / off 关闭；关闭后待办里不会出现天气预警，也不发外网请求。
 WEATHER_ENABLED = os.environ.get("WEATHER_ENABLED", "1").strip().lower() not in (
     "0", "false", "no", "off",

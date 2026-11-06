@@ -112,6 +112,13 @@ CREATE TABLE IF NOT EXISTS trace_hash_log (
     payload_json    TEXT,                    -- 存证原文，校验时据此重算哈希
     created_at      TEXT NOT NULL
 );
+
+-- 通用键值设置：目前只存 weather_region（前端可改的天气地区）
+CREATE TABLE IF NOT EXISTS settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,                -- JSON 文本
+    updated_at TEXT NOT NULL
+);
 """
 
 

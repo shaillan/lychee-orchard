@@ -29,6 +29,20 @@
     </view>
   </view>
 
+  <view class="card">
+    <view class="h2" style="margin:0">天气地区</view>
+    <view class="small muted">天气预警按此地区生成，H5 与小程序共用</view>
+    <view class="kv mt"><text class="k">当前地区</text><text class="v">{{regionLabel}}</text></view>
+    <view class="field mt">
+      <text class="label">地区名（如 广州）</text>
+      <input placeholder="输入城市名" value="{{regionName}}" bindinput="onRegionInput" />
+    </view>
+    <view class="btn block" bindtap="saveRegion">{{regionSaving ? '保存中…' : '保存地区'}}</view>
+    <view wx:if="{{regionMsg}}" class="alert {{regionOk ? 'good' : 'critical'}} mt">
+      <view class="al-detail">{{regionMsg}}</view>
+    </view>
+  </view>
+
   <view class="h2">今日待办</view>
 
   <view wx:if="{{loading}}" class="card muted">加载中…</view>

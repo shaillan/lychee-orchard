@@ -32,19 +32,29 @@ function decorate(r) {
   else if (s.risk === '中高') riskClass = 'serious';
   else if (s.risk === '中') riskClass = 'warning';
 
+  const rawSource = String(r.source || '').split('#')[0];  // 丢掉 #confirm_false 内部后缀
   let sourceLabel = '本地模拟（未配置 AI Key）';
-  if (r.source === 'demo') sourceLabel = '演示模式';
-  else if (String(r.source || '').indexOf('mock_fallback') === 0) sourceLabel = '云端调用失败，已降级本地模拟';
-  else if (!r.is_mock) sourceLabel = '云端 AI · ' + (r.source || '');
+  if (rawSource === 'demo') sourceLabel = '演示模式';
+  else if (rawSource.indexOf('mock_fallback') === 0) sourceLabel = '云端调用失败，已降级本地模拟';
+  else if (!r.is_mock) sourceLabel = '云端 AI · ' + rawSource;
 
   const ra = s.recommended_action || 'none';
   const actionLabels = { pesticide: '按建议用药', operation: '人工清除', ignore: '观察（暂不处理）', none: '无需处置' };
   const btnCls = a => (a === ra ? 'btn' : 'btn ghost');
+  const diff = s.differential || {};
+  const verifyStatus = (s.verification || {}).status || '';
+  const VERIFY_TEXT = { confirmed: '已通过', rejected: '未通过，已降级', unavailable: '复核不可用（保留首轮）' };
 
   return Object.assign({}, r, {
     confidencePct: Math.round((Number(r.confidence) || 0) * 100),
     riskClass: riskClass,
     sourceLabel: sourceLabel,
+    hostPartsText: (s.host_parts || []).join('、'),
+    confusableText: (diff.confusable || []).join('、'),
+    distinguishingText: (diff.distinguishing || []).join('；'),
+    nonChemical: s.non_chemical || [],
+    verificationText: VERIFY_TEXT[verifyStatus] || '',
+    verificationClass: verifyStatus === 'confirmed' ? 'good' : (verifyStatus === 'rejected' ? 'serious' : 'neutral'),
     pesticides: s.pesticides || [],
     warnings: s.warnings || [],
     pending: !r.status || r.status === 'pending',

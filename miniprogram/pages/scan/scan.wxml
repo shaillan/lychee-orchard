@@ -51,9 +51,23 @@
     </view>
     <view class="kv"><text class="k">置信度</text><text class="v">{{result.confidencePct}}%</text></view>
     <view class="kv"><text class="k">风险等级</text><text class="v">{{result.suggestion.risk}}（{{result.suggestion.kind}}）</text></view>
+    <view wx:if="{{result.hostPartsText}}" class="kv"><text class="k">危害部位</text><text class="v">{{result.hostPartsText}}</text></view>
     <view class="kv"><text class="k">识别来源</text><text class="v">{{result.sourceLabel}}</text></view>
+    <view wx:if="{{result.verificationText}}" class="mt">
+      <text class="pill {{result.verificationClass}}">二次确认：{{result.verificationText}}</text>
+    </view>
 
     <view class="pre mt">{{result.suggestion.text}}</view>
+
+    <view wx:if="{{result.confusableText}}" class="alert warning mt">
+      <view class="al-title">易混淆：{{result.confusableText}}</view>
+      <view class="al-detail">{{result.distinguishingText}}</view>
+    </view>
+
+    <view wx:if="{{result.nonChemical.length}}" class="alert good mt">
+      <view class="al-title">非化学措施</view>
+      <view class="al-detail" wx:for="{{result.nonChemical}}" wx:key="*this">· {{item}}</view>
+    </view>
 
     <view wx:if="{{result.pesticides.length}}" class="pills mt">
       <text wx:for="{{result.pesticides}}" wx:key="name" class="pill neutral">{{item.name}} · {{item.safe_interval_days}}天</text>

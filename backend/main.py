@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -15,9 +16,14 @@ from pydantic import BaseModel, Field
 
 from . import ai_service, config, weather
 from .db import get_conn, init_db, rows_to_dicts
-from .rules import PESTICIDES, PESTICIDE_BY_CAS, PESTICIDE_BY_NAME, PESTS, build_suggestion
+from .rules import (
+    PESTICIDES, PESTICIDE_BY_CAS, PESTICIDE_BY_NAME, PESTS, build_suggestion,
+    validate_knowledge,
+)
 from .seed import seed_if_empty
 from .traceability import append_hash, make_batch_no, verify_chain
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -36,6 +42,9 @@ app.mount("/assets", StaticFiles(directory=FRONTEND_DIR), name="assets")
 def _startup() -> None:
     init_db()
     seed_if_empty()
+    problems = validate_knowledge()
+    if problems:  # 只告警不阻断：数据笔误不能把演示环境拖垮
+        logger.warning("知识库自检发现 %d 个问题：%s", len(problems), "；".join(problems))
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +112,10 @@ class RecognitionHandleIn(BaseModel):
     images: list[str] = Field(default_factory=list)
     # 忽略 / 误判 / 通用备注
     note: str = ""
+
+
+class WeatherRegionIn(BaseModel):
+    name: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -823,12 +836,38 @@ def dashboard_compliance_csv(plot_id: int | None = None, limit: int = Query(500,
     return _csv_response("pesticide_compliance.csv", header, body)
 
 
+@app.get("/api/weather/region")
+def weather_region():
+    return {"enabled": config.WEATHER_ENABLED, "region": weather.get_region()}
+
+
+@app.put("/api/weather/region")
+def set_weather_region(payload: WeatherRegionIn):
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(400, "请输入地区名")
+    if len(name) > 40:
+        raise HTTPException(400, "地区名过长（最多 40 字）")
+    try:
+        matched = weather.geocode(name)
+    except Exception:
+        logger.warning("地理编码失败：%s", name, exc_info=True)
+        raise HTTPException(502, "地理编码服务暂不可用，请稍后再试")
+    if not matched:
+        raise HTTPException(404, f"未找到「{name}」，请尝试输入城市名（如 广州）")
+    region = weather.save_region(
+        matched["name"], matched["admin1"], matched["lat"], matched["lon"])
+    return {"enabled": config.WEATHER_ENABLED, "matched": matched, "region": region}
+
+
 @app.get("/api/weather/pest-risk")
 def weather_pest_risk():
+    region = weather.get_region()
     return {
         "enabled": config.WEATHER_ENABLED,
-        "location": config.WEATHER_LOCATION,
-        "risk": weather.get_pest_risk(),
+        "location": region["label"],
+        "region": region,
+        "risk": weather.get_pest_risk(region=region),
     }
 
 

@@ -32,6 +32,15 @@ logger = logging.getLogger(__name__)
 # 可选类别：知识库中的病虫害 + 健康叶片/果实 + 兜底
 VLM_CLASSES = [k for k in PESTS.keys()]
 
+# 别名统一放在知识库里维护；这里展开成查表结构，长别名优先匹配
+_KB_ALIASES: dict[str, str] = {
+    alias.strip().lower(): name
+    for name, info in PESTS.items()
+    for alias in (info.get("aliases") or [])
+    if alias.strip()
+}
+_KB_ALIASES_BY_LENGTH = sorted(_KB_ALIASES, key=len, reverse=True)
+
 # 先要证据、再要结论：模型必须先描述看到的可疑部位，才允许给出病虫害类别。
 # 这样即使小模型想「凑一个答案」，也会因为写不出病征而在后处理里被降级为无法判断。
 SYSTEM_PROMPT = (
@@ -119,8 +128,17 @@ def _models_to_try() -> list[str]:
     return models
 
 
-def _remote_recognize(image_bytes: bytes) -> tuple[str, float, str]:
-    """返回 (类别, 置信度, 实际命中的模型名)。"""
+def _vision_chat(
+    image_bytes: bytes,
+    system_prompt: str,
+    user_text: str,
+    *,
+    temperature: float = 0.1,
+    models: list[str] | None = None,
+    retry: bool = True,
+    timeout: float | None = None,
+) -> tuple[str, str]:
+    """OpenAI 兼容的视觉调用，返回 (content, 实际命中的模型名)。"""
     import time
 
     import httpx
@@ -128,23 +146,24 @@ def _remote_recognize(image_bytes: bytes) -> tuple[str, float, str]:
     payload = {
         "model": config.VISION_MODEL,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
                 "content": [
                     {"type": "image_url", "image_url": {"url": _image_url(image_bytes)}},
-                    {"type": "text", "text": "请识别这张荔枝病虫害照片。"},
+                    {"type": "text", "text": user_text},
                 ],
             },
         ],
-        "temperature": 0.1,
+        "temperature": temperature,
     }
 
+    delays = _RETRY_DELAYS if retry else ()
     last_error = ""
-    for model in _models_to_try():
+    for model in (models or _models_to_try()):
         payload["model"] = model
         resp = None
-        for attempt in range(len(_RETRY_DELAYS) + 1):
+        for attempt in range(len(delays) + 1):
             resp = httpx.post(
                 config.VISION_BASE_URL,
                 headers={
@@ -152,11 +171,11 @@ def _remote_recognize(image_bytes: bytes) -> tuple[str, float, str]:
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=config.VISION_TIMEOUT,
+                timeout=timeout or config.VISION_TIMEOUT,
             )
-            if resp.status_code not in _RETRY_STATUS or attempt == len(_RETRY_DELAYS):
+            if resp.status_code not in _RETRY_STATUS or attempt == len(delays):
                 break
-            time.sleep(_RETRY_DELAYS[attempt])
+            time.sleep(delays[attempt])
 
         try:
             resp.raise_for_status()
@@ -168,11 +187,19 @@ def _remote_recognize(image_bytes: bytes) -> tuple[str, float, str]:
         content = body["choices"][0]["message"]["content"]
         if isinstance(content, list):  # 部分兼容实现返回分段内容
             content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-        pest_class, confidence, evidence = _parse_vlm_content(str(content))
-        pest_class, confidence = _apply_evidence_check(pest_class, confidence, evidence)
-        return pest_class, confidence, model
+        return str(content), model
 
     raise RuntimeError(last_error or "所有视觉模型均调用失败")
+
+
+def _remote_recognize(image_bytes: bytes) -> tuple[str, float, str]:
+    """首轮识别，返回 (类别, 置信度, 实际命中的模型名)。"""
+    content, model = _vision_chat(
+        image_bytes, SYSTEM_PROMPT, "请识别这张荔枝病虫害照片。", temperature=0.1
+    )
+    pest_class, confidence, evidence = _parse_vlm_content(content)
+    pest_class, confidence = _apply_evidence_check(pest_class, confidence, evidence)
+    return pest_class, confidence, model
 
 
 def _parse_vlm_content(content: str) -> tuple[str, float, str]:
@@ -220,6 +247,105 @@ def _apply_evidence_check(pest_class: str, confidence: float, evidence: str) -> 
     return pest_class, confidence
 
 
+# ---------------------------------------------------------------------------
+# 二次确认：病虫害结论必须经得起「换个问法再问一次」
+# ---------------------------------------------------------------------------
+CONFIRM_SYSTEM_PROMPT = (
+    "你是荔枝病虫害复核专家。只根据图片判断：图中是否真实存在给定病虫害的典型症状，"
+    "不要因为类别名称而猜测。必须只输出一个 JSON 对象，不要 markdown、解释或多余文字。\n"
+    "字段：\n"
+    "1. observed：客观描述图中可疑部位的形态、颜色、位置，20-40 字；未见异常写「未见异常」。\n"
+    "2. present：true 或 false，表示图中是否存在该病虫害的典型症状。\n"
+    "3. reason：一句话说明依据，必须引用看到或未看到的关键特征。\n"
+    "看不清、图片与荔枝无关或症状不典型时，present 填 false。"
+)
+
+
+def _confirm_user_text(pest_class: str, info: dict) -> str:
+    diff = info.get("differential") or {}
+    return (
+        f"第一轮识别为「{pest_class}」（{info.get('kind', '')}）。\n"
+        f"典型症状：{info.get('symptoms', '')}\n"
+        f"主要为害部位：{'、'.join(info.get('host_parts') or []) or '未注明'}\n"
+        f"易混淆类别：{'、'.join(diff.get('confusable') or []) or '无'}\n"
+        f"区分要点：{'；'.join(diff.get('distinguishing') or []) or '无'}\n"
+        "请只根据图片判断：图中是否真实存在上述典型症状？\n"
+        '严格输出 JSON：{"observed":"...","present":true,"reason":"..."}'
+    )
+
+
+def _parse_confirm_content(content: str) -> tuple[bool | None, str]:
+    """解析复核结果；present 缺失或不是布尔语义时返回 None（fail-open）。"""
+    match = re.search(r"\{.*\}", content, re.S)
+    if not match:
+        raise ValueError(f"复核未返回 JSON：{content[:120]}")
+    obj = json.loads(match.group(0))
+    present = obj.get("present")
+    if isinstance(present, str):
+        lowered = present.strip().lower()
+        if lowered in ("true", "yes", "1", "是", "有", "存在"):
+            present = True
+        elif lowered in ("false", "no", "0", "否", "无", "不存在"):
+            present = False
+        else:
+            present = None
+    elif not isinstance(present, bool):
+        present = None
+    reason = str(obj.get("reason") or obj.get("observed") or "").strip()[:200]
+    return present, reason
+
+
+def _confirm_presence(
+    image_bytes: bytes, pest_class: str, model_used: str
+) -> tuple[bool | None, str]:
+    """单模型、不重试、短超时；返回 (present, reason)，None 表示复核不可用。"""
+    info = PESTS.get(pest_class) or {}
+    try:
+        content, _ = _vision_chat(
+            image_bytes,
+            CONFIRM_SYSTEM_PROMPT,
+            _confirm_user_text(pest_class, info),
+            temperature=0.0,
+            models=[model_used],
+            retry=False,
+            timeout=config.VISION_CONFIRM_TIMEOUT,
+        )
+    except Exception as exc:
+        logger.warning("二次确认调用失败（%s），保留首轮结果：%s", pest_class, exc)
+        return None, f"error:{type(exc).__name__}"
+    try:
+        return _parse_confirm_content(content)
+    except Exception as exc:
+        logger.warning("二次确认输出无法解析（%s）：%s", pest_class, exc)
+        return None, "malformed"
+
+
+def _verify_prediction(
+    image_bytes: bytes, pest_class: str, confidence: float,
+    model_used: str, enabled: bool,
+) -> tuple[str, float, dict]:
+    """对首轮病虫害结论做二次复核，返回 (类别, 置信度, 复核信息)。"""
+    info = PESTS.get(pest_class) or {}
+    if info.get("kind") not in ("虫害", "病害"):
+        return pest_class, confidence, {"status": "skipped", "reason": "not_pest", "model": None}
+    if not enabled:
+        return pest_class, confidence, {"status": "skipped", "reason": "disabled", "model": None}
+
+    present, reason = _confirm_presence(image_bytes, pest_class, model_used)
+    if present is False:
+        logger.warning("二次确认未通过（%s）：%s，降级为无法判断", pest_class, reason[:80])
+        return "无法判断", min(confidence, 0.3), {
+            "status": "rejected", "reason": reason, "model": model_used,
+        }
+    if present is None:
+        return pest_class, confidence, {
+            "status": "unavailable", "reason": reason, "model": model_used,
+        }
+    return pest_class, confidence, {
+        "status": "confirmed", "reason": reason, "model": model_used,
+    }
+
+
 def _normalize_class(raw: str) -> str:
     raw = raw.strip()
     if raw in PESTS:
@@ -227,17 +353,13 @@ def _normalize_class(raw: str) -> str:
     for name in PESTS:
         if name in raw or raw in name:
             return name
-    # 常见英文/别名兜底
-    aliases = {
-        "蒂蛀虫": "荔枝蒂蛀虫", "蝽": "荔枝蝽", "霜疫霉": "荔枝霜疫霉病",
-        "炭疽": "荔枝炭疽病", "瘿螨": "荔枝瘿螨", "尺蠖": "荔枝尺蠖",
-        "healthy fruit": "健康果实", "healthy leaf": "健康叶片",
-        "healthy": "健康叶片", "unknown": "无法判断",
-    }
+
     lowered = raw.lower()
-    for key, value in aliases.items():
-        if key.lower() in lowered:
-            return value
+    if lowered in _KB_ALIASES:  # 精确命中优先，避免 healthy fruit 落到 healthy
+        return _KB_ALIASES[lowered]
+    for alias in _KB_ALIASES_BY_LENGTH:  # 长别名优先，再做子串
+        if alias in lowered:
+            return _KB_ALIASES[alias]
     return "无法判断"
 
 
@@ -312,29 +434,46 @@ def recognize(image_bytes: bytes, plot_id: int | None = None,
     if provider == "api":
         try:
             pest_class, confidence, model_used = _remote_recognize(image_bytes)
+            pest_class, confidence, verification = _verify_prediction(
+                image_bytes, pest_class, confidence, model_used, config.VISION_CONFIRM
+            )
             source = f"{_provider_label()}:{model_used}"
+            if verification["status"] == "rejected":
+                source += "#confirm_false"
+            elif verification["status"] == "unavailable":
+                source += "#confirm_error"
         except Exception as exc:  # 云端失败降级，演示不中断
             logger.warning("云端识别失败（%s），已降级本地模拟：%s", ", ".join(_models_to_try()), exc)
             pest_class, confidence = _mock_class(seed), _mock_confidence(seed)
             source = f"mock_fallback({type(exc).__name__})"
+            verification = {"status": "skipped", "reason": "cloud_failed", "model": None}
     elif provider == "custom":
         try:
             pest_class, confidence, bbox = _custom_api_recognize(image_bytes, plot_id)
             source = "custom_api"
+            verification = {"status": "skipped", "reason": "custom_provider", "model": None}
         except Exception as exc:
             pest_class, confidence = _mock_class(seed), _mock_confidence(seed)
             source = f"mock_fallback({type(exc).__name__})"
+            verification = {"status": "skipped", "reason": "custom_failed", "model": None}
     else:
         pest_class, confidence = _mock_class(seed), _mock_confidence(seed)
         source = "mock"
+        verification = {"status": "skipped", "reason": "mock", "model": None}
 
     suggestion = build_suggestion(pest_class, confidence, days_to_harvest)
+    if verification["status"] == "rejected":
+        suggestion["warnings"].append(
+            "二次确认未通过：图中未见知识库描述的典型症状，结果已降级为无法判断，请人工复核。"
+        )
+    suggestion["verification"] = verification
     return {
         "pest_class": pest_class,
         "confidence": confidence,
         "bbox": bbox or _mock_bbox(seed),
         "source": source,
         "is_mock": source.startswith("mock"),
+        "verification": verification,
         "suggestion": suggestion,
     }
 
@@ -345,11 +484,14 @@ def recognize_known(pest_class: str, confidence: float = 0.92,
     if pest_class not in PESTS:
         pest_class = MOCK_CLASS_POOL[0]
     suggestion = build_suggestion(pest_class, confidence, days_to_harvest)
+    verification = {"status": "skipped", "reason": "demo", "model": None}
+    suggestion["verification"] = verification
     return {
         "pest_class": pest_class,
         "confidence": confidence,
         "bbox": [120, 150, 220, 220],
         "source": "demo",
         "is_mock": True,
+        "verification": verification,
         "suggestion": suggestion,
     }
