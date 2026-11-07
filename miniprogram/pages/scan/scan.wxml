@@ -1,4 +1,12 @@
 <view class="wrap {{fontClass}}">
+  <view class="card kb-entry" bindtap="openKb">
+    <view class="kb-entry-main">
+      <view class="h2" style="margin:0">📚 病虫害知识库</view>
+      <view class="small muted">12 种常见病虫害 · 症状、鉴别与防治要点</view>
+    </view>
+    <text class="picker-arrow">›</text>
+  </view>
+
   <view class="card">
     <view class="h2">拍照识别病虫害</view>
     <view class="photo-box" bindtap="choosePhoto">
@@ -52,6 +60,7 @@
     <view class="kv"><text class="k">置信度</text><text class="v">{{result.confidencePct}}%</text></view>
     <view class="kv"><text class="k">风险等级</text><text class="v">{{result.suggestion.risk}}（{{result.suggestion.kind}}）</text></view>
     <view wx:if="{{result.hostPartsText}}" class="kv"><text class="k">危害部位</text><text class="v">{{result.hostPartsText}}</text></view>
+    <view wx:if="{{result.peakText}}" class="kv"><text class="k">高发期</text><text class="v">{{result.peakText}}</text></view>
     <view class="kv"><text class="k">识别来源</text><text class="v">{{result.sourceLabel}}</text></view>
     <view wx:if="{{result.verificationText}}" class="mt">
       <text class="pill {{result.verificationClass}}">二次确认：{{result.verificationText}}</text>
@@ -67,6 +76,16 @@
     <view wx:if="{{result.nonChemical.length}}" class="alert good mt">
       <view class="al-title">非化学措施</view>
       <view class="al-detail" wx:for="{{result.nonChemical}}" wx:key="*this">· {{item}}</view>
+    </view>
+
+    <view wx:if="{{result.monitoringText}}" class="alert warning mt">
+      <view class="al-title">监测要点</view>
+      <view class="al-detail">{{result.monitoringText}}</view>
+    </view>
+
+    <view wx:if="{{result.biological.length}}" class="alert good mt">
+      <view class="al-title">生物防治</view>
+      <view class="al-detail" wx:for="{{result.biological}}" wx:key="*this">· {{item}}</view>
     </view>
 
     <view wx:if="{{result.pesticides.length}}" class="pills mt">
@@ -103,6 +122,8 @@
       </view>
     </block>
     <view wx:else class="mt"><text class="pill good">已处置</text></view>
+
+    <view wx:if="{{result.kbName}}" class="btn ghost block mt" bindtap="openKbDetail" data-name="{{result.kbName}}">查看「{{result.kbName}}」知识库详情</view>
   </view>
 
   <view class="card" id="historyCard">

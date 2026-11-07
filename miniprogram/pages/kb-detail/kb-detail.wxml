@@ -1,0 +1,106 @@
+<view class="wrap {{fontClass}}">
+  <view wx:if="{{loading}}" class="card">
+    <view class="skeleton sk-line w40"></view>
+    <view class="skeleton sk-line w90"></view>
+    <view class="skeleton sk-block"></view>
+    <view class="skeleton sk-line w70"></view>
+    <view class="skeleton sk-line w90"></view>
+  </view>
+
+  <view wx:elif="{{error}}" class="card">
+    <view class="empty">
+      <text class="empty-icon">⚠️</text>
+      <text class="empty-title">加载失败</text>
+      <text class="empty-sub">{{error}}</text>
+    </view>
+    <view class="btn ghost block" hover-class="btn-tap" bindtap="onRetry">重试</view>
+  </view>
+
+  <block wx:else>
+    <view class="hero kb-hero">
+      <view class="glow glow-a"></view>
+      <view class="glow glow-b"></view>
+      <view class="hero-top">
+        <text class="hero-kicker">{{pest.kind}} · {{pest.latin}}</text>
+        <text class="kb-hero-icon">{{pest.icon}}</text>
+      </view>
+      <view class="hero-title">{{pest.name}}</view>
+      <view class="hero-chips">
+        <view class="hero-chip">风险 {{pest.risk}}</view>
+        <view wx:if="{{pest.peakText}}" class="hero-chip">高发 {{pest.peakText}}</view>
+        <view class="hero-chip">✓ 已收录</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-head">
+        <text class="card-title">典型症状</text>
+        <text class="pill {{pest.riskClass}}"><text class="pdot"></text>{{pest.risk}}</text>
+      </view>
+      <view class="kb-text">{{pest.symptoms}}</view>
+      <view class="kv mt"><text class="k">危害部位</text><text class="v">{{pest.hostText || '—'}}</text></view>
+      <view wx:if="{{pest.peakText}}" class="kv"><text class="k">高发期</text><text class="v">{{pest.peakText}}</text></view>
+      <view wx:if="{{pest.timing}}" class="kv"><text class="k">防治时机</text><text class="v">{{pest.timing}}</text></view>
+    </view>
+
+    <view wx:if="{{pest.monitoring}}" class="card">
+      <view class="card-head"><text class="card-title">🔍 监测要点</text></view>
+      <view class="kb-text">{{pest.monitoring}}</view>
+    </view>
+
+    <view class="card">
+      <view class="card-head"><text class="card-title">🆚 易混淆与鉴别</text></view>
+      <view wx:if="{{pest.confusableText}}" class="kb-sub">易混淆：{{pest.confusableText}}</view>
+      <view wx:for="{{pest.distinguishing}}" wx:key="*this" class="kb-li">· {{item}}</view>
+      <view wx:if="{{!pest.distinguishing.length}}" class="hint">暂未收录鉴别要点。</view>
+    </view>
+
+    <view wx:if="{{pest.nonChemical.length}}" class="card">
+      <view class="card-head"><text class="card-title">🌱 非化学措施</text></view>
+      <view wx:for="{{pest.nonChemical}}" wx:key="*this" class="kb-li">· {{item}}</view>
+    </view>
+
+    <view wx:if="{{pest.biological.length}}" class="card">
+      <view class="card-head"><text class="card-title">🐞 生物防治</text></view>
+      <view wx:for="{{pest.biological}}" wx:key="*this" class="kb-li">· {{item}}</view>
+    </view>
+
+    <view wx:if="{{pest.notes}}" class="card">
+      <view class="card-head"><text class="card-title">🧑‍🌾 田间管理</text></view>
+      <view class="kb-text">{{pest.notes}}</view>
+    </view>
+
+    <view class="sec">
+      <view class="sec-bar"></view>
+      <text class="sec-title">推荐药剂</text>
+      <text class="sec-count">{{pesticides.length}} 种</text>
+    </view>
+
+    <view wx:if="{{!pesticides.length}}" class="card">
+      <view class="empty">
+        <text class="empty-icon">🧪</text>
+        <text class="empty-title">暂无登记药剂</text>
+        <text class="empty-sub">优先采用上方非化学措施，必要时咨询当地农技人员</text>
+      </view>
+    </view>
+
+    <view wx:else class="card">
+      <view wx:for="{{pesticides}}" wx:key="name" class="kb-drug">
+        <view class="kb-drug-main">
+          <view class="kb-drug-name">
+            <text class="kb-drug-title">{{item.name}}</text>
+            <text class="pill neutral">{{item.category}}</text>
+          </view>
+          <view class="kb-drug-meta">{{item.dosage_hint}}</view>
+          <view class="kb-drug-cas mono">CAS {{item.cas_no}}</view>
+        </view>
+        <view class="kb-drug-days">
+          <text class="num">{{item.safe_interval_days}}</text>
+          <text class="lbl">天间隔期</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="tip">资料整理自公开农药登记信息与荔枝栽培农技资料，仅供辅助判断；具体用药请核对农药标签登记作物与剂量，并严格执行安全间隔期。</view>
+  </block>
+</view>

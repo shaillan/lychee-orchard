@@ -80,6 +80,9 @@ class KnowledgeBaseTest(unittest.TestCase):
             s = build_suggestion(name, 0.9)
             self.assertTrue(s["host_parts"], name)
             self.assertTrue(s["non_chemical"], name)
+            self.assertTrue(s["peak_months"], name)
+            self.assertTrue(s["monitoring"], name)
+            self.assertTrue(s["biological"], name)
             self.assertTrue(s["differential"]["confusable"], name)
             self.assertTrue(s["differential"]["distinguishing"], name)
             for other in s["differential"]["confusable"]:

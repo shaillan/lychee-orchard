@@ -6,7 +6,9 @@
     "pages/scan/scan",
     "pages/form/form",
     "pages/trace/trace",
-    "pages/batches/batches"
+    "pages/batches/batches",
+    "pages/kb/kb",
+    "pages/kb-detail/kb-detail"
   ],
   "window": {
     "navigationBarTitleText": "智慧果园管家",

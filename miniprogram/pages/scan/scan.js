@@ -50,6 +50,10 @@ function decorate(r) {
     riskClass: riskClass,
     sourceLabel: sourceLabel,
     hostPartsText: (s.host_parts || []).join('、'),
+    peakText: (s.peak_months || []).join('、'),
+    monitoringText: s.monitoring || '',
+    biological: s.biological || [],
+    kbName: (s.kind === '虫害' || s.kind === '病害') ? (s.pest_class || r.pest_class || '') : '',
     confusableText: (diff.confusable || []).join('、'),
     distinguishingText: (diff.distinguishing || []).join('；'),
     nonChemical: s.non_chemical || [],
@@ -131,6 +135,16 @@ Page({
         });
       })
       .catch(err => this.setData({ error: err.message }));
+  },
+
+  openKb() {
+    wx.navigateTo({ url: '/pages/kb/kb' });
+  },
+
+  openKbDetail(e) {
+    const name = e.currentTarget.dataset.name;
+    if (!name) return;
+    wx.navigateTo({ url: '/pages/kb-detail/kb-detail?name=' + encodeURIComponent(name) });
   },
 
   onPlotChange(e) { this.setData({ plotIndex: Number(e.detail.value) }); },

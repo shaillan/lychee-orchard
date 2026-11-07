@@ -88,7 +88,7 @@ VISION_PROVIDER=auto
 
 > 旧变量名 `DASHSCOPE_API_KEY` / `DASHSCOPE_BASE_URL` 仍然兼容，但推荐统一用 `VISION_*`。
 
-> 识别输出被提示词约束在知识库的 9 个类别内（荔枝蒂蛀虫、荔枝蝽、霜疫霉病、荔枝炭疽病、瘿螨、尺蠖、健康叶片、健康果实、无法判断），
+> 识别输出被提示词约束在知识库的 15 个类别内（12 种常见病虫害：荔枝蒂蛀虫、荔枝蝽、荔枝霜疫霉病、荔枝炭疽病、荔枝瘿螨、荔枝尺蠖、荔枝煤烟病、荔枝藻斑病、荔枝叶瘿蚊、荔枝木虱、荔枝介壳虫、荔枝小灰蝶，另有健康叶片、健康果实、无法判断），
 > 无法判断时返回「无法判断」并禁止给出用药建议。**用药建议始终由 `backend/rules.py` 规则库生成**。
 >
 > **四道防误报闸门**：
@@ -103,7 +103,12 @@ VISION_PROVIDER=auto
 >
 > 知识库（`backend/rules.py` 的 `PESTS`）每个类别除症状 / 时机 / 备注外，还带
 > `aliases`（别名，统一启发式归一）、`host_parts`（危害部位）、`differential`（易混淆类别 + 鉴别要点）、
-> `non_chemical`（物理 / 农业防治措施）。启动时 `validate_knowledge()` 自检字段完整性与交叉引用，只告警不阻断启动。
+> `non_chemical`（物理 / 农业防治措施）、`peak_months`（高发月份）、`monitoring`（监测要点）、
+> `biological`（生物防治 / 天敌）。启动时 `validate_knowledge()` 自检字段完整性与交叉引用，只告警不阻断启动。
+>
+> 小程序端提供「病虫害知识库」浏览页（`pages/kb`）与详情页（`pages/kb-detail`），
+> 支持关键词搜索、虫害 / 病害筛选，详情页展示症状、高发期、监测要点、鉴别、非化学与生物防治及推荐药剂；
+> 首页快捷区、拍照识别页均可进入，识别结果也可一键跳转到对应条目。
 
 ## 一物一码
 
@@ -221,7 +226,7 @@ lychee-orchard/
 │   ├── weather.py          # Open-Meteo 天气 → 霜疫霉病风险（缓存 + 静默降级）
 │   └── seed.py             # 演示种子数据
 ├── miniprogram/            # 微信小程序（果农端）
-│   ├── pages/todo|plots|plot|scan|form|trace|batches/
+│   ├── pages/todo|plots|plot|scan|form|trace|batches|kb|kb-detail/
 │   └── utils/config.js     # 后端地址（真机预览改这里）
 │       utils/font.js       # 大字模式偏好（本地存储）
 ├── frontend/

@@ -15,11 +15,15 @@ PESTICIDES: list[dict] = [
     {"name": "氯虫苯甲酰胺", "cas_no": "500008-45-7", "category": "杀虫剂",
      "targets": ["荔枝蒂蛀虫"], "safe_interval_days": 14, "dosage_hint": "20%悬浮剂 3000-4000倍液"},
     {"name": "甲氨基阿维菌素苯甲酸盐", "cas_no": "155569-91-8", "category": "杀虫剂",
-     "targets": ["荔枝蒂蛀虫", "荔枝尺蠖"], "safe_interval_days": 7, "dosage_hint": "5%微乳剂 1500-2000倍液"},
+     "targets": ["荔枝蒂蛀虫", "荔枝尺蠖", "荔枝小灰蝶"], "safe_interval_days": 7, "dosage_hint": "5%微乳剂 1500-2000倍液"},
     {"name": "吡虫啉", "cas_no": "138261-41-3", "category": "杀虫剂",
-     "targets": ["荔枝尺蠖"], "safe_interval_days": 7, "dosage_hint": "10%可湿性粉剂 2000倍液"},
+     "targets": ["荔枝尺蠖", "荔枝木虱"], "safe_interval_days": 7, "dosage_hint": "10%可湿性粉剂 2000倍液"},
     {"name": "啶虫脒", "cas_no": "135410-20-7", "category": "杀虫剂",
-     "targets": ["荔枝尺蠖"], "safe_interval_days": 7, "dosage_hint": "20%可溶粉剂 4000倍液"},
+     "targets": ["荔枝尺蠖", "荔枝木虱"], "safe_interval_days": 7, "dosage_hint": "20%可溶粉剂 4000倍液"},
+    {"name": "噻虫嗪", "cas_no": "153719-23-4", "category": "杀虫剂",
+     "targets": ["荔枝木虱", "荔枝介壳虫", "荔枝叶瘿蚊"], "safe_interval_days": 14, "dosage_hint": "25%水分散粒剂 5000-8000倍液"},
+    {"name": "螺虫乙酯", "cas_no": "203313-25-1", "category": "杀虫剂",
+     "targets": ["荔枝介壳虫"], "safe_interval_days": 14, "dosage_hint": "22.4%悬浮剂 4000-5000倍液"},
     {"name": "敌百虫", "cas_no": "52-68-6", "category": "杀虫剂",
      "targets": ["荔枝蝽"], "safe_interval_days": 14, "dosage_hint": "90%晶体 800-1000倍液"},
     {"name": "溴氰菊酯", "cas_no": "52918-63-5", "category": "杀虫剂",
@@ -43,7 +47,7 @@ PESTICIDES: list[dict] = [
     {"name": "多菌灵", "cas_no": "10605-21-7", "category": "杀菌剂",
      "targets": ["荔枝炭疽病"], "safe_interval_days": 14, "dosage_hint": "50%可湿性粉剂 800倍液"},
     {"name": "波尔多液", "cas_no": "8011-63-0", "category": "杀菌剂",
-     "targets": ["荔枝霜疫霉病"], "safe_interval_days": 15, "dosage_hint": "0.5%等量式"},
+     "targets": ["荔枝霜疫霉病", "荔枝藻斑病"], "safe_interval_days": 15, "dosage_hint": "0.5%等量式"},
     {"name": "草甘膦", "cas_no": "1071-83-6", "category": "除草剂",
      "targets": ["杂草"], "safe_interval_days": 30, "dosage_hint": "41%水剂 150-200倍液（行间定向喷雾）"},
     {"name": "乙氧氟草醚", "cas_no": "42874-03-3", "category": "除草剂",
@@ -82,6 +86,9 @@ PESTS: dict[str, dict] = {
             "果穗套袋保护",
             "成虫期悬挂诱虫灯或性诱剂监测",
         ],
+        "peak_months": ["5月", "6月", "7月"],
+        "monitoring": "果实膨大期至转色期每 3-5 天巡园一次，重点检查果蒂、果面是否有针尖状蛀孔和褐色虫粪；捡拾落果剖检。",
+        "biological": ["保护寄生蜂、蜘蛛等天敌", "成虫期使用性诱剂诱杀"],
     },
     "荔枝蝽": {
         "latin": "Tessaratoma papillosa",
@@ -105,6 +112,9 @@ PESTS: dict[str, dict] = {
             "摘除叶背卵块、剪除若虫聚集枝梢",
             "保护平腹小蜂等天敌",
         ],
+        "peak_months": ["3月", "4月", "5月"],
+        "monitoring": "越冬成虫恢复活动期和若虫孵化期，清晨低温时检查叶背卵块和嫩梢若虫数量。",
+        "biological": ["保护平腹小蜂等卵寄生蜂", "人工释放平腹小蜂"],
     },
     "荔枝霜疫霉病": {
         "latin": "Peronophythora litchii",
@@ -128,6 +138,9 @@ PESTS: dict[str, dict] = {
             "清除病果病枝与地面落果，集中销毁",
             "修剪郁闭枝梢，改善通风透光",
         ],
+        "peak_months": ["4月", "5月", "6月"],
+        "monitoring": "花穗期、幼果期关注天气预报，连续阴雨前检查果穗和叶片是否有水渍状病斑。",
+        "biological": ["改善通风降湿，保护拮抗菌群", "发病初期可试用枯草芽孢杆菌等生防制剂"],
     },
     "荔枝炭疽病": {
         "latin": "Colletotrichum gloeosporioides",
@@ -151,6 +164,9 @@ PESTS: dict[str, dict] = {
             "采后清园，清除落果落叶",
             "改善通风透光，避免偏施氮肥",
         ],
+        "peak_months": ["5月", "6月", "7月", "8月"],
+        "monitoring": "高温高湿季节检查叶片、果实是否有褐色凹陷病斑和中央小黑点，采前重点查果。",
+        "biological": ["保护拮抗微生物，减少病源", "清除病残体并集中销毁"],
     },
     "荔枝瘿螨": {
         "latin": "Aceria litchii",
@@ -174,6 +190,9 @@ PESTS: dict[str, dict] = {
             "重点检查叶背，及时摘除虫瘿叶",
             "保护捕食螨等天敌",
         ],
+        "peak_months": ["3月", "4月", "5月", "8月", "9月"],
+        "monitoring": "新梢抽发期检查叶背是否有黄褐色毛毡状绒毛和叶片卷曲，重点看树冠外围嫩叶。",
+        "biological": ["保护捕食螨等天敌", "避免滥用广谱杀虫剂"],
     },
     "荔枝尺蠖": {
         "latin": "Ascotis selenaria",
@@ -197,6 +216,189 @@ PESTS: dict[str, dict] = {
             "灯光诱杀成虫",
             "剪除卵块和低龄幼虫聚集叶",
         ],
+        "peak_months": ["4月", "5月", "6月", "8月", "9月"],
+        "monitoring": "新梢期检查叶片缺刻和幼虫（拟态枝条），每 3-5 天查一次，幼虫三龄前是防治窗口。",
+        "biological": ["保护寄生蜂、鸟类等天敌", "灯光诱杀成虫"],
+    },
+    "荔枝煤烟病": {
+        "latin": "Capnodium spp.",
+        "kind": "病害",
+        "risk": "中",
+        "symptoms": "叶面、果面覆盖黑色煤粉状霉层，用手可擦掉，常伴随蚜虫、木虱、介壳虫分泌的蜜露。",
+        "timing": "春夏高温高湿、虫害严重时高发，树冠郁闭处更重。",
+        "notes": "煤烟病菌以蜜露为营养，治霉先治虫；修剪通风、控制刺吸类害虫是关键。",
+        "aliases": ["煤烟病", "煤污病", "sooty mold"],
+        "host_parts": ["叶片", "果实", "枝梢"],
+        "differential": {
+            "confusable": ["荔枝炭疽病", "荔枝藻斑病"],
+            "distinguishing": [
+                "黑色煤粉状霉层附着在表面，可擦除，叶面本身无明显坏死",
+                "多伴随蜜露和蚜虫、木虱、介壳虫发生",
+                "炭疽病为褐色凹陷病斑伴小黑点，擦不掉",
+                "藻斑病为灰绿色至红褐色绒状斑、有辐射纹理，不是黑色煤粉",
+            ],
+        },
+        "non_chemical": [
+            "修剪郁闭枝梢，改善通风透光",
+            "清除病叶病果，减少菌源",
+            "防治蚜虫、木虱、介壳虫等蜜露来源",
+        ],
+        "peak_months": ["5月", "6月", "7月", "8月"],
+        "monitoring": "巡园时观察叶面、果面是否有黑色煤粉状霉层，重点检查树冠内膛和背阴处；同时留意蚜虫、木虱、介壳虫发生。",
+        "biological": [
+            "保护瓢虫、草蛉等天敌，控制蜜露分泌昆虫",
+            "发病初期可试用枯草芽孢杆菌等生防菌抑制霉层扩展",
+        ],
+    },
+    "荔枝藻斑病": {
+        "latin": "Cephaleuros virescens",
+        "kind": "病害",
+        "risk": "中",
+        "symptoms": "叶面初现黄绿色小圆点，后扩大为灰绿色至红褐色绒状斑，表面有辐射状纹理，多生于树冠中下部潮湿处。",
+        "timing": "3-6 月温暖潮湿、通风不良时高发，雨季扩展快。",
+        "notes": "属藻类病害，以改善通风降湿为主；严重时在发病初期用药。",
+        "aliases": ["藻斑病", "绿藻病", "algal leaf spot"],
+        "host_parts": ["叶片", "枝梢"],
+        "differential": {
+            "confusable": ["荔枝煤烟病", "荔枝炭疽病"],
+            "distinguishing": [
+                "病斑灰绿色至红褐色、绒状，表面有辐射状纹理",
+                "多从叶面发生，树冠中下部潮湿处更重",
+                "煤烟病为黑色煤粉状霉层，可擦掉",
+                "炭疽病为褐色凹陷病斑、边缘晕圈、中央小黑点",
+            ],
+        },
+        "non_chemical": [
+            "修剪过密枝梢，改善通风透光",
+            "清除病叶并集中销毁",
+            "避免树冠长时间潮湿，雨后及时排水",
+        ],
+        "peak_months": ["3月", "4月", "5月", "6月"],
+        "monitoring": "重点检查树冠中下部老叶叶面，看是否有灰绿色绒状、带辐射纹理的圆斑；雨季前后各查一次。",
+        "biological": [
+            "保护叶面有益微生物群落，避免滥用广谱杀菌剂",
+            "发病初期可试用木霉菌等生防制剂",
+        ],
+    },
+    "荔枝叶瘿蚊": {
+        "latin": "Dasineura sp.",
+        "kind": "虫害",
+        "risk": "中",
+        "symptoms": "嫩叶出现细小水疱状虫瘿，叶片扭曲皱缩，严重时新梢枯死，影响抽梢与花芽分化。",
+        "timing": "新梢抽发期成虫产卵于嫩叶，幼虫孵化后蛀入叶肉形成虫瘿。",
+        "notes": "以新梢期防治为主，及时摘除虫瘿叶；冬季清园压低虫源。",
+        "aliases": ["叶瘿蚊", "荔枝瘿蚊", "litchi leaf gall midge"],
+        "host_parts": ["嫩叶", "新梢"],
+        "differential": {
+            "confusable": ["荔枝瘿螨", "荔枝尺蠖"],
+            "distinguishing": [
+                "嫩叶出现水疱状虫瘿、叶片扭曲皱缩",
+                "虫瘿多在叶面凸起，剖开可见细小幼虫",
+                "瘿螨为叶背黄褐色毛毡状绒毛，不形成水疱状虫瘿",
+                "尺蠖为咬食缺刻，无虫瘿",
+            ],
+        },
+        "non_chemical": [
+            "摘除虫瘿叶并集中销毁",
+            "新梢抽发期覆盖防虫网或套袋保护",
+            "冬季清园，剪除被害枝梢",
+        ],
+        "peak_months": ["3月", "4月", "8月", "9月"],
+        "monitoring": "新梢抽发后逐株检查嫩叶是否出现水疱状虫瘿、卷曲畸形；每 3-5 天查一次，重点看树冠外围新梢。",
+        "biological": [
+            "保护寄生蜂等天敌",
+            "园内种植蜜源植物，提高天敌种群数量",
+        ],
+    },
+    "荔枝木虱": {
+        "latin": "Psyllidae",
+        "kind": "虫害",
+        "risk": "中高",
+        "symptoms": "若虫刺吸嫩梢汁液，嫩叶卷曲畸形，若虫分泌白色蜡丝和蜜露，诱发煤烟病。",
+        "timing": "春梢、秋梢抽发期是若虫盛发期，也是防治关键期。",
+        "notes": "重点防治新梢期，兼治煤烟病；轮换用药，避免抗性。",
+        "aliases": ["木虱", "荔枝木虱", "litchi psyllid"],
+        "host_parts": ["嫩梢", "嫩叶", "花穗"],
+        "differential": {
+            "confusable": ["荔枝蝽", "荔枝瘿螨"],
+            "distinguishing": [
+                "嫩梢、嫩叶背面有白色蜡丝和蜜露，叶片卷曲畸形",
+                "若虫群集嫩梢，受惊时弹跳",
+                "蝽为大型若虫/成虫刺吸，受惊喷臭液",
+                "瘿螨为叶背毛毡状绒毛，无蜡丝和蜜露",
+            ],
+        },
+        "non_chemical": [
+            "剪除严重受害嫩梢",
+            "悬挂黄色粘虫板诱杀成虫",
+            "保护瓢虫、草蛉等天敌",
+        ],
+        "peak_months": ["2月", "3月", "4月", "9月", "10月"],
+        "monitoring": "新梢抽发期检查嫩梢、嫩叶背面是否有白色蜡丝、蜜露和若虫；黄色粘虫板可辅助监测成虫数量。",
+        "biological": [
+            "释放或保护瓢虫、草蛉等捕食性天敌",
+            "保护寄生蜂，减少广谱杀虫剂使用",
+        ],
+    },
+    "荔枝介壳虫": {
+        "latin": "Coccoidea",
+        "kind": "虫害",
+        "risk": "中",
+        "symptoms": "枝干、叶片、果面附着褐色或白色蜡质介壳，吸食汁液，严重时枝条枯死并诱发煤烟病。",
+        "timing": "若虫孵化盛期（4-6 月、9-10 月）是防治关键，蜡质形成后药效差。",
+        "notes": "介壳蜡质层厚，必须抓住若虫期用药；剪除严重受害枝。",
+        "aliases": ["介壳虫", "蚧壳虫", "scale insect"],
+        "host_parts": ["枝干", "叶片", "果实"],
+        "differential": {
+            "confusable": ["荔枝木虱", "荔枝瘿螨"],
+            "distinguishing": [
+                "枝干、叶面、果面有褐色或白色蜡质介壳，刮除可见虫体",
+                "多固定不动，严重时枝条表面密布介壳",
+                "木虱为活动性若虫，有白色蜡丝和蜜露",
+                "瘿螨为叶背毛毡状绒毛，无介壳",
+            ],
+        },
+        "non_chemical": [
+            "人工刷除枝干上的介壳虫",
+            "剪除严重受害枝条并销毁",
+            "保护瓢虫、寄生蜂等天敌",
+        ],
+        "peak_months": ["4月", "5月", "6月", "9月", "10月"],
+        "monitoring": "检查枝干、叶背和果面是否有褐色/白色蜡质介壳，注意枝条缝隙和树冠内膛；若虫孵化期是防治窗口。",
+        "biological": [
+            "保护澳洲瓢虫、寄生蜂等天敌",
+            "避免滥用广谱杀虫剂杀伤天敌",
+        ],
+    },
+    "荔枝小灰蝶": {
+        "latin": "Deudorix epijarbas",
+        "kind": "虫害",
+        "risk": "中高",
+        "symptoms": "幼虫蛀食果实，蛀孔较蒂蛀虫大，孔口有粗粒虫粪排出，常导致落果。",
+        "timing": "果实膨大期（5-7 月）幼虫蛀果，是防治关键期。",
+        "notes": "与蒂蛀虫区分：蛀孔较大、虫粪粗；及时捡拾落果。",
+        "aliases": ["小灰蝶", "荔枝小灰蝶", "litchi butterfly"],
+        "host_parts": ["果实", "果核"],
+        "differential": {
+            "confusable": ["荔枝蒂蛀虫", "荔枝尺蠖"],
+            "distinguishing": [
+                "蛀孔较蒂蛀虫大，孔口有粗粒虫粪",
+                "幼虫体色偏绿，蛀入果内取食果核和果肉",
+                "蒂蛀虫蛀孔针尖状、虫粪细",
+                "尺蠖取食叶片造成缺刻，不蛀果",
+            ],
+        },
+        "non_chemical": [
+            "及时捡拾落果并深埋或销毁",
+            "果穗套袋保护",
+            "人工捕杀成虫和幼虫",
+        ],
+        "peak_months": ["5月", "6月", "7月"],
+        "monitoring": "果实膨大期检查果面是否有较大蛀孔和粗粒虫粪，注意果蒂附近；发现落果及时剖检。",
+        "biological": [
+            "保护寄生蜂等天敌",
+            "成虫期悬挂性诱剂辅助监测",
+        ],
     },
     "健康叶片": {
         "latin": "-",
@@ -209,6 +411,9 @@ PESTS: dict[str, dict] = {
         "host_parts": [],
         "differential": {"confusable": [], "distinguishing": []},
         "non_chemical": [],
+        "peak_months": [],
+        "monitoring": "保持常规巡检频次，重点观察叶色、叶背和新梢是否出现新的病斑、虫孔或霉层。",
+        "biological": [],
     },
     "健康果实": {
         "latin": "-",
@@ -221,6 +426,9 @@ PESTS: dict[str, dict] = {
         "host_parts": [],
         "differential": {"confusable": [], "distinguishing": []},
         "non_chemical": [],
+        "peak_months": [],
+        "monitoring": "保持常规巡检频次，采收前重点检查果蒂与果面，发现异常及时拍照记录。",
+        "biological": [],
     },
     "无法判断": {
         "latin": "-",
@@ -233,6 +441,9 @@ PESTS: dict[str, dict] = {
         "host_parts": [],
         "differential": {"confusable": [], "distinguishing": []},
         "non_chemical": [],
+        "peak_months": [],
+        "monitoring": "重新拍摄清晰特写（自然光、叶背或果面），或请农技人员现场诊断。",
+        "biological": [],
     },
 }
 
@@ -246,7 +457,8 @@ PEST_CLASSES = [k for k in PESTS if k not in HEALTHY_CLASSES + ("无法判断",)
 MOCK_CLASS_POOL = [
     "荔枝蒂蛀虫", "荔枝霜疫霉病", "荔枝炭疽病", "荔枝蝽",
     "荔枝蒂蛀虫", "荔枝霜疫霉病", "荔枝瘿螨", "荔枝尺蠖",
-    "荔枝炭疽病", "健康叶片", "健康果实",
+    "荔枝炭疽病", "荔枝木虱", "荔枝介壳虫", "荔枝小灰蝶",
+    "荔枝煤烟病", "健康叶片", "健康果实",
 ]
 
 # 低于该置信度的病虫害结论不做自动处置建议，提示人工复核
@@ -329,6 +541,9 @@ def _knowledge_fields(info: dict | None) -> dict:
             "distinguishing": list(diff.get("distinguishing") or []),
         },
         "non_chemical": list(info.get("non_chemical") or []),
+        "peak_months": list(info.get("peak_months") or []),
+        "monitoring": str(info.get("monitoring") or ""),
+        "biological": list(info.get("biological") or []),
     }
 
 
@@ -460,6 +675,7 @@ _KNOWN_RISKS = ("高", "中高", "中", "无", "未知")
 _REQUIRED_PEST_KEYS = (
     "latin", "kind", "risk", "symptoms", "timing", "notes",
     "aliases", "host_parts", "differential", "non_chemical",
+    "peak_months", "monitoring",
 )
 
 
@@ -524,6 +740,19 @@ def validate_knowledge(
             elif other not in pests:
                 problems.append(f"{name}：differential.confusable 引用了未知类别「{other}」")
 
+        peak = info.get("peak_months") or []
+        if not _is_str_list(peak):
+            problems.append(f"{name}：peak_months 必须是非空字符串列表")
+        elif len(set(peak)) != len(peak):
+            problems.append(f"{name}：peak_months 存在重复项")
+        if not isinstance(info.get("monitoring"), str):
+            problems.append(f"{name}：monitoring 必须是字符串")
+        bio = info.get("biological")
+        if bio is not None and not _is_str_list(bio):
+            problems.append(f"{name}：biological 必须是非空字符串列表")
+        elif bio and len(set(bio)) != len(bio):
+            problems.append(f"{name}：biological 存在重复项")
+
         if info.get("kind") in ("虫害", "病害"):
             if not str(info.get("symptoms") or "").strip():
                 problems.append(f"{name}：symptoms 不能为空")
@@ -535,6 +764,10 @@ def validate_knowledge(
                 problems.append(f"{name}：病虫害必须填写 non_chemical")
             if not (diff.get("distinguishing") or []):
                 problems.append(f"{name}：病虫害必须填写 differential.distinguishing")
+            if not peak:
+                problems.append(f"{name}：病虫害必须填写 peak_months")
+            if not str(info.get("monitoring") or "").strip():
+                problems.append(f"{name}：病虫害必须填写 monitoring")
 
     seen_names: set[str] = set()
     seen_cas: set[str] = set()

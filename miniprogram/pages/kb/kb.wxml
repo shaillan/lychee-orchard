@@ -1,0 +1,70 @@
+<view class="wrap {{fontClass}}">
+  <view class="hero kb-hero">
+    <view class="glow glow-a"></view>
+    <view class="glow glow-b"></view>
+    <view class="hero-kicker">知识与防治 · 东风荔枝</view>
+    <view class="hero-title">病虫害知识库</view>
+    <view class="hero-sub">症状识别 · 易混淆鉴别 · 非化学措施 · 推荐药剂</view>
+    <view class="hero-chips">
+      <view class="hero-chip">🐛 虫害 {{counts.pest}} 种</view>
+      <view class="hero-chip">🍄 病害 {{counts.disease}} 种</view>
+    </view>
+  </view>
+
+  <view class="card kb-search">
+    <view class="field">
+      <input placeholder="搜索名称、别名或症状，如「蛀孔」" value="{{keyword}}" bindinput="onSearch" confirm-type="search" />
+    </view>
+    <view class="kb-filters">
+      <view class="kb-filter {{filter === 'all' ? 'on' : ''}}" data-filter="all" bindtap="setFilter" hover-class="kb-filter-tap">全部 {{counts.all}}</view>
+      <view class="kb-filter {{filter === 'pest' ? 'on' : ''}}" data-filter="pest" bindtap="setFilter" hover-class="kb-filter-tap">虫害 {{counts.pest}}</view>
+      <view class="kb-filter {{filter === 'disease' ? 'on' : ''}}" data-filter="disease" bindtap="setFilter" hover-class="kb-filter-tap">病害 {{counts.disease}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{error}}" class="card">
+    <view class="empty">
+      <text class="empty-icon">⚠️</text>
+      <text class="empty-title">知识库加载失败</text>
+      <text class="empty-sub">{{error}}</text>
+    </view>
+    <view class="btn ghost block" hover-class="btn-tap" bindtap="load">重试</view>
+  </view>
+
+  <block wx:elif="{{loading}}">
+    <view wx:for="{{[1,2,3]}}" wx:key="*this" class="card">
+      <view class="skeleton sk-line w40"></view>
+      <view class="skeleton sk-line w90"></view>
+      <view class="skeleton sk-line w70"></view>
+    </view>
+  </block>
+
+  <view wx:elif="{{!list.length}}" class="card">
+    <view class="empty">
+      <text class="empty-icon">🔎</text>
+      <text class="empty-title">没有匹配的条目</text>
+      <text class="empty-sub">换个关键词，或切换到「全部」</text>
+    </view>
+  </view>
+
+  <block wx:else>
+    <view wx:for="{{list}}" wx:key="name" class="kb-card" hover-class="kb-card-tap" bindtap="openDetail" data-name="{{item.name}}">
+      <view class="kb-icon {{item.kind === '虫害' ? 'kb-icon-pest' : 'kb-icon-disease'}}">{{item.icon}}</view>
+      <view class="kb-main">
+        <view class="kb-head">
+          <text class="kb-name">{{item.name}}</text>
+          <text class="pill {{item.riskClass}}"><text class="pdot"></text>{{item.risk}}</text>
+        </view>
+        <view class="kb-latin mono">{{item.latin}}</view>
+        <view class="kb-symptom">{{item.symptoms}}</view>
+        <view class="kb-meta">
+          <text wx:if="{{item.hostText}}">危害 {{item.hostText}}</text>
+          <text wx:if="{{item.hasPeak}}">{{item.hostText ? ' · ' : ''}}高发 {{item.peakText}}</text>
+        </view>
+      </view>
+      <text class="kb-arrow">›</text>
+    </view>
+  </block>
+
+  <view class="tip">资料整理自公开农技资料，仅供辅助判断；用药请以农药标签登记为准。</view>
+</view>

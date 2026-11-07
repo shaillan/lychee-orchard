@@ -94,5 +94,9 @@ Page({
 
   goTrace() {
     wx.navigateTo({ url: '/pages/trace/trace' });
+  },
+
+  goKb() {
+    wx.navigateTo({ url: '/pages/kb/kb' });
   }
 });

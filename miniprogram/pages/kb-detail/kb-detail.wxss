@@ -1,0 +1,92 @@
+/* ---- 详情头图 ------------------------------------------------------------ */
+.kb-hero { padding-bottom: 30rpx; }
+.kb-hero-icon { font-size: 56rpx; line-height: 1; opacity: 0.92; }
+
+/* ---- 正文块 -------------------------------------------------------------- */
+.kb-text {
+  font-size: 26rpx;
+  line-height: 1.8;
+  color: #35473C;
+  color: var(--ink-2);
+  overflow-wrap: break-word;
+}
+.kb-sub {
+  margin-bottom: 10rpx;
+  font-size: 25rpx;
+  line-height: 1.7;
+  color: #65766B;
+  color: var(--muted);
+  overflow-wrap: break-word;
+}
+.kb-li {
+  padding: 4rpx 0;
+  font-size: 25rpx;
+  line-height: 1.75;
+  color: #35473C;
+  color: var(--ink-2);
+  overflow-wrap: break-word;
+}
+
+/* ---- 推荐药剂 ------------------------------------------------------------ */
+.kb-drug {
+  display: flex;
+  align-items: center;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #F1F5F1;
+}
+.kb-drug:last-child { border-bottom: none; padding-bottom: 4rpx; }
+.kb-drug-main { flex: 1; min-width: 0; }
+.kb-drug-name { display: flex; align-items: center; flex-wrap: wrap; }
+.kb-drug-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #15241B;
+  color: var(--ink);
+}
+.kb-drug-name .pill { margin-left: 10rpx; }
+.kb-drug-meta { margin-top: 4rpx; font-size: 23rpx; color: #4E6155; }
+.kb-drug-cas {
+  margin-top: 2rpx;
+  font-size: 20rpx;
+  color: #8A9A8F;
+  overflow-wrap: break-word;
+}
+.kb-drug-days {
+  flex: none;
+  width: 124rpx;
+  margin-left: 16rpx;
+  text-align: center;
+}
+.kb-drug-days .num {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #166A49;
+  color: var(--brand-700);
+}
+.kb-drug-days .lbl {
+  display: block;
+  font-size: 19rpx;
+  color: #65766B;
+  color: var(--muted);
+}
+
+.tip {
+  padding: 8rpx 0 20rpx;
+  text-align: center;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #65766B;
+  color: var(--muted);
+}
+
+/* ---- 大字模式 ------------------------------------------------------------ */
+.font-lg .kb-text { font-size: 31rpx; }
+.font-lg .kb-sub { font-size: 30rpx; }
+.font-lg .kb-li { font-size: 30rpx; }
+.font-lg .kb-drug-title { font-size: 33rpx; }
+.font-lg .kb-drug-meta { font-size: 28rpx; }
+.font-lg .kb-drug-cas { font-size: 25rpx; }
+.font-lg .kb-drug-days .num { font-size: 38rpx; }
+.font-lg .kb-drug-days .lbl { font-size: 24rpx; }
+.font-lg .tip { font-size: 27rpx; }
