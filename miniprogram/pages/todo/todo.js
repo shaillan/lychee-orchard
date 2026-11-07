@@ -82,6 +82,32 @@ Page({
     });
   },
 
+  // 待办里的「查看用药台账 / 去填报 / 查看批次」之前是死链接，现在按类型跳转
+  onTodoAction(e) {
+    const ds = e.currentTarget.dataset || {};
+    const type = ds.type;
+    const plotId = Number(ds.plot) || 0;
+
+    if (type === 'safety') {
+      if (plotId) {
+        wx.navigateTo({ url: '/pages/plot/plot?id=' + plotId });  // 档案页含用药台账
+      } else {
+        wx.switchTab({ url: '/pages/plots/plots' });
+      }
+      return;
+    }
+    if (type === 'operation') {
+      if (plotId) wx.setStorageSync('formPlotId', plotId);  // 填报页自动选中该地块
+      wx.switchTab({ url: '/pages/form/form' });
+      return;
+    }
+    if (type === 'batch') {
+      wx.navigateTo({ url: '/pages/batches/batches' });
+      return;
+    }
+    wx.showToast({ title: '暂不支持该操作', icon: 'none' });
+  },
+
   goScan() {
     // tab 页不能带 query，用 storage 标记让扫码页滚到识别记录区
     wx.setStorageSync('focusHistory', true);

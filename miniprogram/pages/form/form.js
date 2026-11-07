@@ -20,6 +20,21 @@ Page({
   onShow() {
     this.setData({ fontClass: font.fontClass() });
     if (!this.data.plots.length) this.loadMeta();
+    else this.applyPendingPlot();
+  },
+
+  // 从待办「去填报」进来时，自动选中对应地块
+  applyPendingPlot() {
+    const id = Number(wx.getStorageSync('formPlotId') || 0);
+    if (!id) return;
+    wx.removeStorageSync('formPlotId');
+    const plots = this.data.plots || [];
+    for (let i = 0; i < plots.length; i++) {
+      if (Number(plots[i].id) === id) {
+        this.setData({ plotIndex: i });
+        return;
+      }
+    }
   },
 
   loadMeta() {
@@ -37,6 +52,7 @@ Page({
           pestiCas: first.cas_no || '',
           pestiSafe: first.safe_interval_days || ''
         });
+        this.applyPendingPlot();
       })
       .catch(err => this.setData({ opMsg: err.message, opOk: false }));
   },

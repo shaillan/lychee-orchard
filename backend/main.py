@@ -703,6 +703,8 @@ def todos():
             if not safety["safe"]:
                 items.append({
                     "level": "critical",
+                    "type": "safety",
+                    "plot_id": p["id"],
                     "title": f"{p['name']} 处于用药安全间隔期",
                     "detail": safety["message"],
                     "action": "查看用药台账",
@@ -715,6 +717,8 @@ def todos():
                 if gap >= 10:
                     items.append({
                         "level": "warning",
+                        "type": "operation",
+                        "plot_id": p["id"],
                         "title": f"{p['name']} 已 {gap} 天未记录农事",
                         "detail": "建议安排一次巡园并补录农事记录",
                         "action": "去填报",
@@ -725,6 +729,8 @@ def todos():
             if pending:
                 items.append({
                     "level": "serious",
+                    "type": "batch",
+                    "plot_id": p["id"],
                     "title": f"{p['name']} 有 {pending} 个批次被拦截",
                     "detail": "安全间隔期未满，暂不能生成销售溯源码",
                     "action": "查看批次",

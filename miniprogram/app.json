@@ -23,10 +23,30 @@
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [
-      { "pagePath": "pages/todo/todo", "text": "今日待办" },
-      { "pagePath": "pages/plots/plots", "text": "我的果园" },
-      { "pagePath": "pages/scan/scan", "text": "拍照识别" },
-      { "pagePath": "pages/form/form", "text": "快速填报" }
+      {
+        "pagePath": "pages/todo/todo",
+        "text": "今日待办",
+        "iconPath": "images/tab/todo.png",
+        "selectedIconPath": "images/tab/todo-on.png"
+      },
+      {
+        "pagePath": "pages/plots/plots",
+        "text": "我的果园",
+        "iconPath": "images/tab/plots.png",
+        "selectedIconPath": "images/tab/plots-on.png"
+      },
+      {
+        "pagePath": "pages/scan/scan",
+        "text": "拍照识别",
+        "iconPath": "images/tab/scan.png",
+        "selectedIconPath": "images/tab/scan-on.png"
+      },
+      {
+        "pagePath": "pages/form/form",
+        "text": "快速填报",
+        "iconPath": "images/tab/form.png",
+        "selectedIconPath": "images/tab/form-on.png"
+      }
     ]
   },
   "style": "v2",

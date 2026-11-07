@@ -5,8 +5,10 @@
       wx:for="{{plots}}"
       wx:key="id"
       class="zone {{item.safe ? 'z-good' : 'z-warn'}}"
+      hover-class="btn-tap"
       bindtap="open"
       data-id="{{item.id}}"
+      data-scroll="1"
     >
       <view class="z-code">{{item.code}}</view>
       <view class="z-name">{{item.variety}}</view>
@@ -15,10 +17,26 @@
   </view>
 
   <view class="h2 mt">地块档案</view>
-  <view wx:if="{{loading}}" class="card muted">加载中…</view>
-  <view wx:elif="{{error}}" class="card error">{{error}}</view>
+  <view wx:if="{{loading && !plots.length}}" class="card muted">加载中…</view>
+  <view wx:elif="{{error && !plots.length}}" class="card error">
+    <view>{{error}}</view>
+    <view class="btn ghost small mt" bindtap="retry">重试</view>
+  </view>
+  <view wx:elif="{{!plots.length}}" class="card empty">还没有地块档案</view>
   <block wx:else>
-    <view wx:for="{{plots}}" wx:key="id" class="card" bindtap="open" data-id="{{item.id}}">
+    <view wx:if="{{error}}" class="card error">
+      <view>{{error}}</view>
+      <view class="btn ghost small mt" bindtap="retry">重试</view>
+    </view>
+    <view
+      wx:for="{{plots}}"
+      wx:key="id"
+      id="plot-{{item.id}}"
+      class="card"
+      hover-class="btn-tap"
+      bindtap="open"
+      data-id="{{item.id}}"
+    >
       <view class="card-head">
         <text class="title">{{item.name}}</text>
         <text class="pill {{item.safeClass}}">{{item.safeText}}</text>
@@ -27,6 +45,43 @@
       <view class="kv"><text class="k">面积 / 株数</text><text class="v">{{item.area_mu}} 亩 · {{item.tree_count}} 株</text></view>
       <view class="kv"><text class="k">定植年份</text><text class="v">{{item.planting_year}}</text></view>
       <view class="kv"><text class="k">位置</text><text class="v">{{item.location}}</text></view>
+
+      <view wx:if="{{expandedId !== item.id}}" class="pd-hint">点击查看农事 / 用药记录</view>
+
+      <view wx:if="{{expandedId === item.id}}" class="pd" catchtap="noop">
+        <view wx:if="{{detailLoading}}" class="pd-tip">记录加载中…</view>
+        <view wx:elif="{{detailError}}" class="pd-tip err">{{detailError}}</view>
+        <block wx:elif="{{detail && detail.id === item.id}}">
+          <view wx:if="{{!detail.safe}}" class="alert critical mt">
+            <view class="al-title">用药安全间隔期内</view>
+            <view class="al-detail">{{detail.safetyMessage}}</view>
+          </view>
+
+          <view class="pd-sec">最近农事记录</view>
+          <block wx:if="{{detail.ops.length}}">
+            <view wx:for="{{detail.ops}}" wx:for-item="op" wx:key="id" class="list-item">
+              <view class="li-main">
+                <view class="li-title">{{op.operation_type}}</view>
+                <view class="li-desc">{{op.operator}} · {{op.operation_date}}</view>
+              </view>
+            </view>
+          </block>
+          <view wx:else class="pd-tip">暂无农事记录</view>
+
+          <view class="pd-sec">最近用药台账</view>
+          <block wx:if="{{detail.psts.length}}">
+            <view wx:for="{{detail.psts}}" wx:for-item="pst" wx:key="id" class="list-item">
+              <view class="li-main">
+                <view class="li-title">{{pst.pesticide_name}}</view>
+                <view class="li-desc">{{pst.apply_time}} · 安全间隔期 {{pst.safe_interval_days}} 天</view>
+              </view>
+            </view>
+          </block>
+          <view wx:else class="pd-tip">暂无用药记录</view>
+        </block>
+      </view>
+
+      <view wx:if="{{expandedId === item.id}}" class="pd-more" catchtap="openFull" data-id="{{item.id}}">查看完整档案（产量趋势）›</view>
     </view>
   </block>
 </view>

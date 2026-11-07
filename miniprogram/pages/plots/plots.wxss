@@ -28,3 +28,41 @@
 }
 
 .card-head .title { font-size: 30rpx; font-weight: 600; }
+
+/* 档案卡展开的农事 / 用药记录（与 H5 一致） */
+.pd {
+  margin-top: 16rpx;
+  padding-top: 8rpx;
+  border-top: 1rpx dashed #e2eae5;
+}
+.pd-sec {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #3d4d43;
+  margin: 18rpx 0 4rpx;
+}
+.pd-sec:first-child { margin-top: 10rpx; }
+.pd-tip { font-size: 24rpx; color: #8a9890; padding: 10rpx 0; }
+.pd-tip.err { color: #c0392b; }
+.pd-hint { margin-top: 12rpx; font-size: 22rpx; color: #9aa8a0; }
+.pd-more {
+  margin-top: 14rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid #f0f3f0;
+  font-size: 26rpx;
+  color: #1f6f4a;
+  text-align: right;
+}
+
+.list-item { padding: 14rpx 0; border-bottom: 1rpx solid #f0f3f0; }
+.list-item:last-child { border-bottom: none; }
+.li-title { font-size: 28rpx; }
+.li-desc { font-size: 24rpx; color: #7a8a80; margin-top: 4rpx; }
+
+.font-lg .pd-sec { font-size: 31rpx; }
+.font-lg .pd-tip { font-size: 29rpx; }
+.font-lg .pd-hint { font-size: 27rpx; }
+.font-lg .pd-more { font-size: 31rpx; }
+.font-lg .li-title { font-size: 33rpx; }
+.font-lg .li-desc { font-size: 29rpx; }
+.font-lg .card-head .title { font-size: 36rpx; }

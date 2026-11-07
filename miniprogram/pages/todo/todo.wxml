@@ -58,7 +58,14 @@
       <view class="al-detail">{{item.detail}}</view>
       <view wx:if="{{item.type === 'recognition'}}" class="btn ghost small mt" bindtap="goScan">去处置</view>
       <view wx:elif="{{item.type === 'weather'}}" class="btn ghost small mt" bindtap="goScan">去拍照识别</view>
-      <view wx:elif="{{item.action}}" class="small muted mt">{{item.action}}</view>
+      <view
+        wx:elif="{{item.action}}"
+        class="btn ghost small mt"
+        hover-class="btn-tap"
+        bindtap="onTodoAction"
+        data-type="{{item.type}}"
+        data-plot="{{item.plot_id}}"
+      >{{item.action}}</view>
     </view>
   </block>
 </view>

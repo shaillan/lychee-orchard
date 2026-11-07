@@ -1,6 +1,9 @@
 <view class="wrap {{fontClass}}">
   <view wx:if="{{loading}}" class="card muted">加载中…</view>
-  <view wx:elif="{{error}}" class="card error">{{error}}</view>
+  <view wx:elif="{{error}}" class="card error">
+    <view>{{error}}</view>
+    <view class="btn ghost small mt" bindtap="retry">重试</view>
+  </view>
 
   <block wx:elif="{{plot}}">
     <view class="card">
@@ -22,15 +25,15 @@
       <view class="card-head">
         <text class="h2">产量趋势（kg）</text>
         <view class="legend">
-          <text class="lg-dot lg-act"></text><text class="lg-txt">实际</text>
-          <text class="lg-dot lg-est"></text><text class="lg-txt">预估</text>
+          <view class="lg-dot lg-act"></view><text class="lg-txt">实际</text>
+          <view class="lg-dot lg-est"></view><text class="lg-txt">预估</text>
         </view>
       </view>
       <view class="chart" wx:if="{{yields.length}}">
         <view wx:for="{{yields}}" wx:key="season" class="bar-col">
           <view class="bar-stack">
-            <view class="bar bar-est" style="height: {{item.estH}}%"></view>
-            <view class="bar bar-act" style="height: {{item.actH}}%"></view>
+            <view wx:if="{{item.estH}}" class="bar bar-est" style="height: {{item.estH}}%"></view>
+            <view wx:if="{{item.actH}}" class="bar bar-act" style="height: {{item.actH}}%"></view>
           </view>
           <text class="bar-season">{{item.season}}</text>
         </view>

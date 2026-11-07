@@ -137,9 +137,20 @@ async function loadTodos(){
           ? '<button class="btn ghost small" style="margin-top:8px" onclick="goRecognition()">去处置</button>'
           : (i.type==='weather'
               ? '<button class="btn ghost small" style="margin-top:8px" onclick="switchTab(\'scan\')">去拍照识别</button>'
-              : (i.action ? `<div class="small muted" style="margin-top:6px">${esc(i.action)}</div>` : ''))}
+              : (i.action ? `<button class="btn ghost small" style="margin-top:8px" onclick="goTodoAction('${esc(i.type||'')}', ${Number(i.plot_id)||0})">${esc(i.action)}</button>` : ''))}
       </div>`).join('');
   } catch(e){ el.innerHTML = `<div class="card">加载失败：${esc(e.message)}</div>`; }
+}
+
+/* 待办动作：查看用药台账 / 去填报 / 查看批次 */
+function goTodoAction(type, plotId){
+  if(type === 'safety' || type === 'batch'){ plotId ? goPlotDetail(plotId) : switchTab('plots'); return; }
+  if(type === 'operation'){ switchTab('form'); return; }
+}
+
+function goPlotDetail(id){
+  window._focusPlot = id;
+  switchTab('plots');
 }
 
 /* ---------- 我的果园 ---------- */
@@ -159,6 +170,8 @@ async function loadPlots(){
         <div class="kv"><span class="k">位置</span><span class="v">${esc(p.location)}</span></div>
       </div>`;
     }).join('');
+    // 从待办跳过来时，列表渲染完再定向打开该地块
+    if(window._focusPlot){ const id = window._focusPlot; window._focusPlot = null; openPlot(id); }
   } catch(e){ el.innerHTML = `<div class="card">加载失败：${esc(e.message)}</div>`; }
 }
 
