@@ -1,6 +1,17 @@
 const api = require('../../utils/api');
 const font = require('../../utils/font');
 
+// 微信同声传译插件：需先在 mp 后台为该 AppID 添加插件并在 app.json 声明，
+// 否则开发者工具会报「插件未授权使用」导致模拟器启动失败，因此这里必须容错降级
+let voiceManager = null;
+try {
+  if (typeof requirePlugin === 'function') {
+    voiceManager = requirePlugin('WechatSI').getRecordRecognitionManager();
+  }
+} catch (e) {
+  voiceManager = null;
+}
+
 Page({
   data: {
     fontClass: '',
@@ -9,12 +20,43 @@ Page({
     opIndex: 0,
     operator: '陈伯',
     remark: '',
+    voiceAvailable: !!voiceManager, recording: false,
     pesticides: [], pesticideNames: [], pestiIndex: 0,
     pestiName: '', pestiCas: '', pestiSafe: '',
     pestiDays: '',
     opMsg: '', opOk: false,
     pstMsg: '', pstOk: false,
     submitting: false
+  },
+
+  onLoad() {
+    if (!voiceManager) return;
+    voiceManager.onStop = res => {
+      const text = String((res && res.result) || '').trim();
+      this.setData({ recording: false });
+      if (!text) {
+        wx.showToast({ title: '没听清，请再说一次', icon: 'none' });
+        return;
+      }
+      const merged = (this.data.remark ? this.data.remark + ' ' : '') + text;
+      this.setData({ remark: merged });
+    };
+    voiceManager.onError = () => {
+      this.setData({ recording: false });
+      wx.showToast({ title: '语音识别失败，请手动输入', icon: 'none' });
+    };
+    this.setData({ voiceAvailable: true });
+  },
+
+  startVoice() {
+    if (!voiceManager || this.data.recording) return;
+    this.setData({ recording: true });
+    voiceManager.start({ duration: 60000, lang: 'zh_CN' });
+  },
+
+  stopVoice() {
+    if (!voiceManager || !this.data.recording) return;
+    voiceManager.stop();
   },
 
   onShow() {

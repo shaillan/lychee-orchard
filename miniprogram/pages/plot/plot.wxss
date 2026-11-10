@@ -52,3 +52,15 @@
 .list-item:last-child { border-bottom: none; }
 .li-title { font-size: 28rpx; }
 .li-desc { font-size: 24rpx; color: #7a8a80; margin-top: 4rpx; }
+
+.maturity-check {
+  padding-top: 12rpx;
+  border-top: 1rpx dashed #e5ece7;
+}
+.check-img {
+  width: 180rpx;
+  height: 180rpx;
+  margin-top: 10rpx;
+  border-radius: 10rpx;
+  background: #eef4ef;
+}

@@ -1,1 +1,16 @@
 .field .small { margin-top: 6rpx; }
+
+.voice-row { display: flex; align-items: center; }
+.voice-input { flex: 1; }
+.voice-btn {
+  flex: none;
+  margin-left: 16rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 12rpx;
+  background: #eef4ef;
+  color: #1f6f4a;
+  font-size: 26rpx;
+  text-align: center;
+}
+.voice-btn.on { background: #fdeaea; color: #c0392b; }
+.voice-tip { color: #7a8a80; }

@@ -12,6 +12,11 @@
 .b-code { font-size: 30rpx; font-weight: 600; letter-spacing: 1rpx; }
 
 .batch-body { display: flex; align-items: center; }
+
+.residue-form {
+  border-top: 1rpx dashed #e5ece7;
+  padding-top: 16rpx;
+}
 .qr {
   width: 180rpx;
   height: 180rpx;

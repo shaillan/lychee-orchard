@@ -38,7 +38,7 @@ from backend.rules import (  # noqa: E402
     validate_knowledge,
 )
 from backend.traceability import make_batch_no  # noqa: E402
-from backend import weather  # noqa: E402
+from backend import crack, maturity, patrol, weather  # noqa: E402
 from backend.weather import evaluate_risk  # noqa: E402
 
 
@@ -438,6 +438,19 @@ class ApiTest(unittest.TestCase):
         self.assertIn("planting", body)
         self.assertIn("care", body)
         self.assertIn("sales", body)
+        # 采后段：冷链节点与农残快检（种子演示数据补齐）
+        self.assertIn("cold_chain", body["sales"])
+        self.assertIn("residue_tests", body["sales"])
+        self.assertTrue(body["sales"]["residue_tests"])
+        self.assertEqual(body["sales"]["residue_conclusion"], "合格")
+        self.assertIn(body["sales"]["cold_chain"]["status"],
+                      {"cooling", "transit", "arrived"})
+
+    def test_dashboard_summary_new_fields(self):
+        body = self.client.get("/api/dashboard/summary").json()
+        for key in ("coldchain_overdue", "residue_unqualified", "harvest_ready"):
+            self.assertIn(key, body)
+        self.assertIsInstance(body["harvest_ready"], list)
 
     def test_hash_chain_detects_tampering(self):
         from backend.db import get_conn
@@ -783,6 +796,22 @@ class WeatherRegionApiTest(unittest.TestCase):
             self.assertIsNone(weather.get_pest_risk())
             self.assertEqual(fetch.call_count, 2)  # 换地区不复用旧缓存
 
+    def test_expired_cache_served_without_blocking(self):
+        """缓存过期时先返回旧结论，外部请求交给后台线程：接口不再被天气拖慢 1~3 秒。"""
+        stale = {"pest": "荔枝霜疫霉病", "level": "high", "date": "2026-11-06",
+                 "precip_mm": 12.0, "precip_prob": 90, "humidity": 92,
+                 "detail": "旧结论", "location": "广东广州", "source": "Open-Meteo"}
+        with mock.patch.object(weather.config, "WEATHER_ENABLED", True), \
+                mock.patch.object(weather, "_fetch_days", return_value=self._DRY) as fetch, \
+                mock.patch.object(weather, "_refresh_in_background") as bg:
+            weather.save_region("广州", "广东", 23.11667, 113.25)
+            with weather._LOCK:
+                weather._CACHE.update(key=(23.117, 113.25), loaded=True,
+                                      expires=0.0, risk=stale)
+            self.assertEqual(weather.get_pest_risk(), stale)
+            self.assertEqual(fetch.call_count, 0)   # 没有同步等外部接口
+            bg.assert_called_once()                 # 改成后台刷新
+
     def test_pest_risk_reports_saved_region(self):
         weather.save_region("广州", "广东", 23.11667, 113.25)
         body = self.client.get("/api/weather/pest-risk").json()
@@ -790,6 +819,369 @@ class WeatherRegionApiTest(unittest.TestCase):
         self.assertIsNone(body["risk"])
         self.assertEqual(body["location"], "广东广州")
         self.assertEqual(body["region"]["name"], "广州")
+
+
+class MaturityTest(unittest.TestCase):
+    """采收窗口是纯日历规则：边界、未知品种、物候期。"""
+
+    def test_unknown_variety_falls_back_to_default(self):
+        info = maturity.window_for("白糖罂", date(2026, 6, 16))
+        self.assertEqual(info["window_start"], "2026-06-15")
+        self.assertEqual(info["window_end"], "2026-07-15")
+        self.assertEqual(info["status"], "最佳")
+
+    def test_status_boundaries(self):
+        near = maturity.window_for("妃子笑", date(2026, 6, 1))       # 距 6/5 还有 4 天
+        self.assertEqual(near["status"], "临近")
+        self.assertEqual(near["days_to_start"], 4)
+
+        far = maturity.window_for("妃子笑", date(2026, 5, 1))
+        self.assertEqual(far["status"], "未到")
+
+        best = maturity.window_for("妃子笑", date(2026, 6, 5))      # 窗口首日
+        self.assertEqual(best["status"], "最佳")
+        self.assertEqual(best["days_remaining"], 20)
+
+        over = maturity.window_for("妃子笑", date(2026, 7, 1))      # 6/25 之后 6 天
+        self.assertEqual(over["status"], "已过")
+        self.assertEqual(over["days_overdue"], 6)
+
+    def test_phenology_mapping(self):
+        self.assertEqual(maturity.phenology("桂味", date(2026, 4, 1)), "花穗期")
+        self.assertEqual(maturity.phenology("桂味", date(2026, 5, 10)), "幼果期")
+        self.assertEqual(maturity.phenology("桂味", date(2026, 6, 10)), "果实膨大期")
+        self.assertEqual(maturity.phenology("桂味", date(2026, 6, 25)), "转色成熟期")
+        self.assertEqual(maturity.phenology("桂味", date(2026, 8, 1)), "采后")
+
+
+class CrackRiskTest(unittest.TestCase):
+    """久旱转雨 + 品种敏感度 + 物候期，任一不满足都不预警。"""
+
+    TODAY = date(2026, 7, 5)
+
+    @classmethod
+    def _days(cls, past, future):
+        days = [{
+            "date": (cls.TODAY - timedelta(days=len(past) - i)).isoformat(),
+            "precip_mm": mm,
+        } for i, mm in enumerate(past)]
+        days += [{
+            "date": (cls.TODAY + timedelta(days=i)).isoformat(),
+            "precip_mm": mm,
+        } for i, mm in enumerate(future)]
+        return days
+
+    def test_high_sensitivity_hits(self):
+        risk = crack.evaluate_crack_risk(
+            self._days([0] * 7, [15, 0, 0]), "糯米糍", today=self.TODAY)
+        self.assertIsNotNone(risk)
+        self.assertEqual(risk["level"], "high")
+        self.assertEqual(risk["phenology"], "转色成熟期")
+        self.assertEqual(risk["rain_mm"], 15.0)
+
+    def test_medium_sensitivity_needs_more_rain(self):
+        days = self._days([0] * 7, [10, 0, 0])   # 10mm：糯米糍触发，桂味（12mm）不触发
+        self.assertIsNotNone(crack.evaluate_crack_risk(days, "糯米糍", today=self.TODAY))
+        self.assertIsNone(crack.evaluate_crack_risk(days, "桂味", today=self.TODAY))
+
+    def test_non_sensitive_phenology_skipped(self):
+        # 妃子笑 6/25 后已过窗口，物候期为采后
+        self.assertIsNone(crack.evaluate_crack_risk(
+            self._days([0] * 7, [30, 0, 0]), "妃子笑", today=self.TODAY))
+
+    def test_wet_past_skipped(self):
+        self.assertIsNone(crack.evaluate_crack_risk(
+            self._days([30] + [0] * 6, [30, 0, 0]), "糯米糍", today=self.TODAY))
+
+    def test_short_dry_streak_skipped(self):
+        wet = [0, 2, 0, 2, 0, 2, 0]   # 累计 6mm 但最长连续无雨只有 1 天
+        self.assertIsNone(crack.evaluate_crack_risk(
+            self._days(wet, [30, 0, 0]), "糯米糍", today=self.TODAY))
+
+    def test_missing_history_skipped(self):
+        self.assertIsNone(crack.evaluate_crack_risk(
+            self._days([0] * 3, [30, 0, 0]), "糯米糍", today=self.TODAY))
+        self.assertIsNone(crack.evaluate_crack_risk([], "糯米糍", today=self.TODAY))
+
+
+class ColdChainTest(unittest.TestCase):
+    def setUp(self):
+        from backend import main as backend_main
+
+        self.main = backend_main
+        self.now = datetime(2026, 7, 3, 12, 0, 0)
+
+    def test_overdue_without_precool(self):
+        chain = self.main._cold_chain_for(
+            {"harvest_at": "2026-07-02 06:00:00"}, now=self.now)
+        self.assertEqual(chain["status"], "overdue")
+        self.assertEqual(chain["hours_since_harvest"], 30.0)
+
+    def test_stage_progression(self):
+        batch = {"harvest_at": "2026-07-02 06:00:00", "precooled_at": "2026-07-02 08:00:00"}
+        self.assertEqual(self.main._cold_chain_for(batch, now=self.now)["status"], "cooling")
+        batch["shipped_at"] = "2026-07-02 14:00:00"
+        self.assertEqual(self.main._cold_chain_for(batch, now=self.now)["status"], "transit")
+        batch["arrived_at"] = "2026-07-03 07:00:00"
+        self.assertEqual(self.main._cold_chain_for(batch, now=self.now)["status"], "arrived")
+
+    def test_missing_harvest_at_estimated(self):
+        chain = self.main._cold_chain_for(
+            {"harvest_date": "2026-07-02"}, now=self.now)
+        self.assertTrue(chain["harvest_at_estimated"])
+        self.assertEqual(chain["harvest_at"], "2026-07-02 06:00:00")
+
+    def test_old_estimated_batch_is_legacy(self):
+        chain = self.main._cold_chain_for(
+            {"harvest_date": "2026-06-01"}, now=self.now)
+        self.assertEqual(chain["status"], "legacy")
+
+
+class _ApiBase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from fastapi.testclient import TestClient
+
+        from backend.main import app
+
+        cls.client = TestClient(app)
+        cls.client.__enter__()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.__exit__(None, None, None)
+
+
+class ColdChainApiTest(_ApiBase):
+    def _new_batch(self, seq):
+        today = date.today().isoformat()
+        res = self.client.post("/api/batches", json={
+            "plot_id": 2, "harvest_date": today, "packaging_seq": seq,
+            "harvest_at": f"{today} 06:00:00",
+        })
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()["status"], "released")
+        return res.json()["batch_no"]
+
+    def test_events_in_order_and_trace(self):
+        batch_no = self._new_batch(90)
+        today = date.today().isoformat()
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+
+        out_of_order = self.client.post(
+            f"/api/batches/{batch_no}/cold-chain", json={"event": "ship"})
+        self.assertEqual(out_of_order.status_code, 400)
+
+        first = self.client.post(f"/api/batches/{batch_no}/cold-chain",
+                                 json={"event": "precool", "at": f"{today} 08:00:00"})
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(first.json()["cold_chain"]["status"], "cooling")
+
+        dup = self.client.post(f"/api/batches/{batch_no}/cold-chain",
+                               json={"event": "precool", "at": f"{today} 09:00:00"})
+        self.assertEqual(dup.status_code, 409)
+
+        for event, at in (("ship", f"{today} 14:00:00"), ("arrive", f"{tomorrow} 06:00:00")):
+            res = self.client.post(f"/api/batches/{batch_no}/cold-chain",
+                                   json={"event": event, "at": at})
+            self.assertEqual(res.status_code, 200, res.text)
+
+        trace = self.client.get(f"/api/trace/{batch_no}").json()
+        chain = trace["sales"]["cold_chain"]
+        self.assertEqual(chain["status"], "arrived")
+        self.assertFalse(chain["harvest_at_estimated"])
+        self.assertTrue(trace["chain_verify"]["valid"])
+
+    def test_blocked_batch_rejected(self):
+        res = self.client.post("/api/batches/LZ-P01-20260708-0002/cold-chain",
+                               json={"event": "precool"})
+        self.assertEqual(res.status_code, 400)
+
+    def test_todos_report_coldchain_and_residue(self):
+        harvest_at = datetime.now() - timedelta(hours=30)
+        res = self.client.post("/api/batches", json={
+            "plot_id": 2, "harvest_date": date.today().isoformat(), "packaging_seq": 96,
+            "harvest_at": harvest_at.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()["status"], "released")
+        batch_no = res.json()["batch_no"]
+
+        items = self.client.get("/api/todos").json()
+        cold = [i for i in items if i.get("type") == "coldchain" and i.get("batch_no") == batch_no]
+        residue = [i for i in items if i.get("type") == "residue" and i.get("batch_no") == batch_no]
+        self.assertTrue(cold, "30 小时未预冷应产生 coldchain 待办")
+        self.assertEqual(cold[0]["level"], "critical")
+        self.assertTrue(residue, "24 小时~7 天无检测应产生 residue 待办")
+
+
+class TodoExtrasTest(_ApiBase):
+    """裂果 / 采收窗口待办：用替身绕过真实日历与网络。"""
+
+    def test_harvest_todo(self):
+        from backend import main as backend_main
+
+        fake = {
+            "variety": "桂味", "status": "最佳",
+            "window_start": "2026-11-01", "window_end": "2026-11-30",
+            "days_to_start": 0, "days_remaining": 20, "days_overdue": 0,
+            "suggested_date": "2026-11-09", "label": "桂味最佳采收期 11/1–11/30",
+        }
+        with mock.patch.object(backend_main.maturity, "window_for", return_value=fake):
+            items = self.client.get("/api/todos").json()
+        harvest = [i for i in items if i.get("type") == "harvest"]
+        self.assertTrue(harvest)
+        self.assertEqual(harvest[0]["level"], "warning")
+
+    def test_crack_todo(self):
+        from backend import main as backend_main
+
+        fake = {
+            "type": "crack", "level": "high", "variety": "糯米糍", "sensitivity": "high",
+            "date": "2026-11-10", "rain_mm": 15.0, "dry_days": 5, "past_rain_mm": 0.0,
+            "phenology": "转色成熟期", "detail": "久旱转雨，容易裂果",
+            "location": None, "source": "Open-Meteo",
+        }
+        with mock.patch.object(backend_main.weather, "get_extended_days",
+                               return_value=[{"date": "2026-11-08", "precip_mm": 0}]):
+            with mock.patch.object(backend_main.crack, "evaluate_crack_risk",
+                                   return_value=fake):
+                items = self.client.get("/api/todos").json()
+        crack_items = [i for i in items if i.get("type") == "crack"]
+        self.assertTrue(crack_items)
+        self.assertEqual(crack_items[0]["level"], "serious")
+        self.assertLessEqual(len(crack_items), 2)   # 最多两条，避免刷屏
+
+
+class ResidueApiTest(_ApiBase):
+    def _new_batch(self, seq):
+        res = self.client.post("/api/batches", json={
+            "plot_id": 2, "harvest_date": date.today().isoformat(), "packaging_seq": seq,
+        })
+        self.assertEqual(res.status_code, 200, res.text)
+        return res.json()["batch_no"]
+
+    def test_new_batch_waits_for_detection(self):
+        res = self.client.post("/api/batches", json={
+            "plot_id": 2, "harvest_date": date.today().isoformat(), "packaging_seq": 95,
+        })
+        trace = self.client.get(f"/api/trace/{res.json()['batch_no']}").json()
+        self.assertEqual(trace["sales"]["residue_conclusion"], "待检测")
+        self.assertEqual(trace["sales"]["detection_report"], "待检测")
+
+    def test_qualified_record(self):
+        batch_no = self._new_batch(91)
+        res = self.client.post(f"/api/batches/{batch_no}/residue-tests", json={
+            "tested_at": date.today().isoformat(),
+            "lab": "测试检测站",
+            "conclusion": "合格",
+            "items": [{"name": "毒死蜱", "value": "0.008", "unit": "mg/kg",
+                       "limit": "0.01", "passed": True}],
+        })
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertFalse(res.json()["blocked"])
+        self.assertIn("合格", res.json()["detection_report"])
+
+        rows = self.client.get(f"/api/batches/{batch_no}/residue-tests").json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["items"][0]["name"], "毒死蜱")
+
+    def test_unqualified_blocks_released_batch(self):
+        batch_no = self._new_batch(92)
+        res = self.client.post(f"/api/batches/{batch_no}/residue-tests", json={
+            "conclusion": "不合格", "lab": "测试检测站",
+        })
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertTrue(res.json()["blocked"])
+        self.assertEqual(res.json()["status"], "blocked")
+
+        trace = self.client.get(f"/api/trace/{batch_no}").json()
+        self.assertEqual(trace["status"], "blocked")
+        self.assertIn("农残", trace["block_reason"])
+
+    def test_pending_retest_does_not_block(self):
+        batch_no = self._new_batch(93)
+        res = self.client.post(f"/api/batches/{batch_no}/residue-tests", json={
+            "conclusion": "待复检",
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.json()["blocked"])
+        self.assertEqual(res.json()["status"], "released")
+
+    def test_invalid_conclusion(self):
+        batch_no = self._new_batch(94)
+        res = self.client.post(f"/api/batches/{batch_no}/residue-tests", json={
+            "conclusion": "勉强合格",
+        })
+        self.assertEqual(res.status_code, 400)
+
+
+class UploadApiTest(_ApiBase):
+    def test_returns_static_url(self):
+        from backend import main as backend_main
+
+        with mock.patch.object(backend_main.ai_service, "save_image",
+                               return_value=("/static/uploads/x.jpg", "/tmp/x.jpg")):
+            res = self.client.post("/api/uploads", files={
+                "file": ("report.jpg", b"fake-bytes", "image/jpeg")})
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()["url"], "/static/uploads/x.jpg")
+
+    def test_rejects_bad_suffix(self):
+        res = self.client.post("/api/uploads", files={
+            "file": ("report.txt", b"text", "text/plain")})
+        self.assertEqual(res.status_code, 400)
+
+    def test_rejects_empty_file(self):
+        res = self.client.post("/api/uploads", files={
+            "file": ("photo.jpg", b"", "image/jpeg")})
+        self.assertEqual(res.status_code, 400)
+
+
+class MaturityApiTest(_ApiBase):
+    def test_plots_include_maturity(self):
+        plots = self.client.get("/api/plots").json()
+        for plot in plots:
+            self.assertIn("maturity", plot)
+            self.assertIn(plot["maturity"]["status"], {"未到", "临近", "最佳", "已过"})
+            self.assertIn("phenology", plot["maturity"])
+
+    def test_maturity_check_written_to_operations(self):
+        res = self.client.post("/api/plots/1/maturity-check", json={
+            "ripeness": 86, "note": "果肩转红约七成"})
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()["check"]["ripeness"], 86)
+
+        plot = self.client.get("/api/plots/1").json()
+        checks = [o for o in plot["operations"] if o["operation_type"] == "成熟度观察"]
+        self.assertTrue(checks)
+        self.assertIn("果肩转红", checks[0]["detail"])
+
+
+class PatrolTest(_ApiBase):
+    PID = "patrol-demo-01"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        for pest, plot_id in (("荔枝蒂蛀虫", 2), ("荔枝蒂蛀虫", 2),
+                              ("荔枝霜疫霉病", 3), ("健康叶片", 1)):
+            cls.client.post("/api/recognitions/demo", json={
+                "pest_class": pest, "plot_id": plot_id, "patrol_id": cls.PID})
+
+    def test_report_aggregation(self):
+        body = self.client.get(f"/api/patrols/{self.PID}").json()
+        self.assertEqual(body["total"], 3)          # 健康叶片不计入
+        self.assertEqual(body["by_class"][0]["class"], "荔枝蒂蛀虫")
+        self.assertEqual(body["by_class"][0]["count"], 2)
+        self.assertEqual(body["focus_plot"]["plot_id"], 2)
+        self.assertEqual(body["focus_plot"]["count"], 2)
+        self.assertIn("荔枝蒂蛀虫", body["summary"])
+        self.assertTrue(body["advice"])
+
+    def test_unknown_and_invalid_ids(self):
+        self.assertEqual(self.client.get("/api/patrols/patrol-none-99").status_code, 404)
+        self.assertEqual(self.client.get("/api/patrols/bad id!").status_code, 400)
 
 
 if __name__ == "__main__":

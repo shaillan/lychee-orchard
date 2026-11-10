@@ -25,8 +25,14 @@
       <input value="{{operator}}" bindinput="onOperatorInput" placeholder="操作人" />
     </view>
     <view class="field">
-      <text class="label">备注</text>
-      <input value="{{remark}}" bindinput="onRemarkInput" placeholder="如：复合肥 40kg 环状沟施" />
+      <text class="label">备注（可语音输入）</text>
+      <view class="voice-row">
+        <input class="voice-input" value="{{remark}}" bindinput="onRemarkInput" placeholder="如：复合肥 40kg 环状沟施" />
+        <view wx:if="{{voiceAvailable && !recording}}" class="voice-btn" bindtap="startVoice">🎤</view>
+        <view wx:if="{{voiceAvailable && recording}}" class="voice-btn on" bindtap="stopVoice">停止</view>
+      </view>
+      <view wx:if="{{recording}}" class="small voice-tip">正在录音，请说出农事内容，说完点「停止」</view>
+      <view wx:if="{{!voiceAvailable}}" class="small muted voice-tip">当前环境不支持语音输入，请手动输入</view>
     </view>
     <view class="btn block" bindtap="submitOperation">提交农事记录</view>
     <view wx:if="{{opMsg}}" class="alert {{opOk ? 'good' : 'critical'}} mt">

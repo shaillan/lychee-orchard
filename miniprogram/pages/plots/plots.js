@@ -36,10 +36,14 @@ Page({
           const s = p.safety || {};
           const safe = !!s.safe;
           const days = s.remaining_days;
+          const m = p.maturity || {};
           return Object.assign({}, p, {
             safe: safe,
             safeText: safe ? '可采收' : ('还需 ' + (days === null || days === undefined ? '—' : days) + ' 天'),
-            safeClass: safe ? 'good' : 'critical'
+            safeClass: safe ? 'good' : 'critical',
+            maturityStatus: m.status || '',
+            maturityClass: m.status === '最佳' ? 'good'
+              : (m.status === '已过' ? 'critical' : (m.status === '临近' ? 'warning' : 'neutral'))
           });
         });
         this.setData({ plots, loading: false });

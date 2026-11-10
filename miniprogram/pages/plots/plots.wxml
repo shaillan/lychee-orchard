@@ -41,6 +41,9 @@
         <text class="title">{{item.name}}</text>
         <text class="pill {{item.safeClass}}">{{item.safeText}}</text>
       </view>
+      <view wx:if="{{item.maturityStatus}}" class="mt">
+        <text class="pill {{item.maturityClass}}">采收期：{{item.maturityStatus}}</text>
+      </view>
       <view class="kv"><text class="k">品种</text><text class="v">{{item.variety}}</text></view>
       <view class="kv"><text class="k">面积 / 株数</text><text class="v">{{item.area_mu}} 亩 · {{item.tree_count}} 株</text></view>
       <view class="kv"><text class="k">定植年份</text><text class="v">{{item.planting_year}}</text></view>

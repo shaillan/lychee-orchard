@@ -21,6 +21,31 @@
       </view>
     </view>
 
+    <view wx:if="{{maturity}}" class="card">
+      <view class="card-head">
+        <text class="h2">采收窗口</text>
+        <text class="pill {{maturity.statusClass}}">{{maturity.status}}</text>
+      </view>
+      <view class="kv"><text class="k">最佳采收期</text><text class="v">{{maturity.window_start}} ~ {{maturity.window_end}}</text></view>
+      <view class="kv"><text class="k">当前物候期</text><text class="v">{{maturity.phenology}}</text></view>
+      <view wx:if="{{maturity.status === '临近'}}" class="kv">
+        <text class="k">距窗口开始</text><text class="v">{{maturity.days_to_start}} 天</text>
+      </view>
+      <view wx:elif="{{maturity.status === '最佳'}}" class="kv">
+        <text class="k">窗口剩余</text><text class="v">{{maturity.days_remaining}} 天</text>
+      </view>
+      <view wx:elif="{{maturity.status === '已过'}}" class="kv">
+        <text class="k">已过窗口</text><text class="v">{{maturity.days_overdue}} 天</text>
+      </view>
+      <view class="small muted mt">{{maturity.label}}</view>
+      <view wx:if="{{lastCheck}}" class="maturity-check mt">
+        <view class="small">最近观察：成熟度 {{lastCheck.ripeness}}% · {{lastCheck.date}} · {{lastCheck.operator}}</view>
+        <view wx:if="{{lastCheck.note}}" class="small muted">{{lastCheck.note}}</view>
+        <image wx:if="{{lastCheck.image_url}}" class="check-img" src="{{lastCheck.image_url}}" mode="aspectFill"></image>
+      </view>
+      <view wx:else class="small muted mt">暂无成熟度观察记录（规则判定不依赖拍照，照片仅作佐证）</view>
+    </view>
+
     <view class="card">
       <view class="card-head">
         <text class="h2">产量趋势（kg）</text>

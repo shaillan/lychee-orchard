@@ -24,6 +24,40 @@ function decorateHistory(r) {
   });
 }
 
+const HEALTHY = ['健康叶片', '健康果实'];
+
+// 巡园接口不可用时的本地兜底：结构与后端 patrol.build_patrol_report 对齐
+function localPatrol(patrolId, results, plots) {
+  const names = {};
+  (plots || []).forEach(p => { names[p.id] = p.name; });
+  const counts = {};
+  const byPlot = {};
+  (results || []).forEach(r => {
+    const cls = r.pest_class || r.detected_class || '无法判断';
+    if (HEALTHY.indexOf(cls) >= 0) return;
+    counts[cls] = (counts[cls] || 0) + 1;
+    const pid = r.plot_id;
+    if (pid) byPlot[pid] = (byPlot[pid] || 0) + 1;
+  });
+  const by_class = Object.keys(counts)
+    .map(k => ({ class: k, count: counts[k] }))
+    .sort((a, b) => b.count - a.count);
+  const by_plot = Object.keys(byPlot)
+    .map(k => ({ plot_id: Number(k), plot_name: names[k] || ('地块 ' + k), count: byPlot[k] }))
+    .sort((a, b) => b.count - a.count);
+  const total = by_class.reduce((sum, e) => sum + e.count, 0);
+  const parts = by_class.slice(0, 3).map(e => e.class + ' ' + e.count + ' 处').join('、');
+  return {
+    patrol_id: patrolId,
+    total: total,
+    by_class: by_class,
+    by_plot: by_plot,
+    focus_plot: by_plot[0] || null,
+    summary: total ? '本次巡园 ' + total + ' 处异常：' + parts : '本次巡园未发现异常',
+    advice: []
+  };
+}
+
 function decorate(r) {
   const s = r.suggestion || {};
   let riskClass = 'neutral';
@@ -79,6 +113,7 @@ Page({
     plots: [], plotNames: [], plotIndex: 0,
     pests: [], pestNames: [], pestIndex: 0,
     days: '', preview: '', loading: false, handling: false, error: '', result: null,
+    patrol: null, patrolProgress: '',
     history: []
   },
 
@@ -154,13 +189,19 @@ Page({
   choosePhoto() {
     if (this.data.loading) return;
     wx.chooseMedia({
-      count: 1,
+      count: 9,   // 选 1 张走单张识别，多张自动进入巡园模式
       mediaType: ['image'],
       sourceType: ['camera', 'album'],
       sizeType: ['compressed'],
       success: res => {
-        const path = res.tempFiles[0].tempFilePath;
-        this.setData({ preview: path, result: null, error: '' });
+        const files = (res.tempFiles || []).map(f => f.tempFilePath).filter(Boolean);
+        if (!files.length) return;
+        if (files.length > 1) {
+          this.runPatrol(files);
+          return;
+        }
+        const path = files[0];
+        this.setData({ preview: path, result: null, patrol: null, error: '' });
         wx.compressImage({
           src: path,
           quality: 70,
@@ -179,13 +220,91 @@ Page({
     if (plot) formData.plot_id = String(plot.id);
     if (this.data.days !== '') formData.days_to_harvest = String(this.data.days);
 
-    this.setData({ loading: true, error: '' });
+    this.setData({ loading: true, error: '', patrol: null });
     api.upload('/api/recognitions', path, formData)
       .then(r => {
         this.setData({ result: decorate(r), loading: false });
         this.loadHistory();
       })
       .catch(err => this.setData({ error: err.message, loading: false }));
+  },
+
+  // 连拍巡园：串行上传（每张独立请求），单张失败不中断，结束后聚合一份现场报告
+  runPatrol(paths) {
+    const patrolId = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const plot = this.data.plots[this.data.plotIndex];
+    const base = { patrol_id: patrolId };
+    if (plot) base.plot_id = String(plot.id);
+    if (this.data.days !== '') base.days_to_harvest = String(this.data.days);
+
+    const results = [];
+    const failures = [];
+    let done = 0;
+    this.setData({
+      loading: true, error: '', result: null, preview: '', patrol: null,
+      patrolProgress: '正在识别 0/' + paths.length
+    });
+
+    const step = index => {
+      if (index >= paths.length) {
+        this.finishPatrol(patrolId, results, failures);
+        return;
+      }
+      const onReady = file => {
+        api.upload('/api/recognitions', file, base)
+          .then(r => results.push(r))
+          .catch(err => failures.push({ index: index + 1, message: err.message }))
+          .then(() => {
+            done += 1;
+            this.setData({ patrolProgress: '正在识别 ' + done + '/' + paths.length });
+            step(index + 1);
+          });
+      };
+      wx.compressImage({
+        src: paths[index],
+        quality: 70,
+        compressedWidth: 1080,
+        success: c => onReady(c.tempFilePath),
+        fail: () => onReady(paths[index])
+      });
+    };
+    step(0);
+  },
+
+  finishPatrol(patrolId, results, failures) {
+    const local = localPatrol(patrolId, results, this.data.plots);
+    api.request('/api/patrols/' + encodeURIComponent(patrolId))
+      .then(report => this.applyPatrol(report, failures))
+      .catch(() => this.applyPatrol(local, failures))
+      .then(() => this.loadHistory());
+  },
+
+  applyPatrol(report, failures) {
+    const byClass = (report.by_class || []).map(e => ({
+      name: e.class,
+      count: e.count,
+      risk: e.risk || '',
+      riskClass: e.risk === '高' ? 'critical'
+        : (e.risk === '中高' ? 'serious' : (e.risk === '中' ? 'warning' : 'neutral'))
+    }));
+    const byPlot = report.by_plot || [];
+    this.setData({
+      loading: false,
+      patrolProgress: '',
+      patrol: {
+        summary: report.summary || '',
+        total: report.total || 0,
+        byClass: byClass,
+        byPlot: byPlot,
+        focusText: report.focus_plot
+          ? report.focus_plot.plot_name + '（' + report.focus_plot.count + ' 处）' : '',
+        advice: (report.advice || []).slice(0, 3),
+        failures: failures || [],
+        failureText: failures && failures.length
+          ? failures.length + ' 张识别失败（第 ' + failures.map(f => f.index).join('、') + ' 张）'
+          : ''
+      }
+    });
   },
 
   runDemo() {
@@ -196,7 +315,7 @@ Page({
     if (plot) body.plot_id = plot.id;
     if (this.data.days !== '') body.days_to_harvest = parseInt(this.data.days, 10);
 
-    this.setData({ loading: true, error: '', result: null, preview: '' });
+    this.setData({ loading: true, error: '', result: null, preview: '', patrol: null });
     api.request('/api/recognitions/demo', 'POST', body)
       .then(r => {
         this.setData({ result: decorate(r), loading: false });

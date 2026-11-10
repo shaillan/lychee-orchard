@@ -14,7 +14,7 @@
       <view wx:else class="photo-empty">
         <text class="cam">📷</text>
         <text>点击拍照 / 从相册选择</text>
-        <text class="small muted">上传前自动压缩至 1080p</text>
+        <text class="small muted">选多张自动巡园（最多 9 张），上传前压缩至 1080p</text>
       </view>
     </view>
 
@@ -124,6 +124,35 @@
     <view wx:else class="mt"><text class="pill good">已处置</text></view>
 
     <view wx:if="{{result.kbName}}" class="btn ghost block mt" bindtap="openKbDetail" data-name="{{result.kbName}}">查看「{{result.kbName}}」知识库详情</view>
+  </view>
+
+  <view wx:if="{{patrolProgress}}" class="card muted">{{patrolProgress}}</view>
+
+  <view wx:if="{{patrol}}" class="card">
+    <view class="head">
+      <text class="title">巡园报告</text>
+      <text class="pill {{patrol.total ? 'serious' : 'good'}}">{{patrol.total}} 处异常</text>
+    </view>
+    <view class="pre">{{patrol.summary}}</view>
+    <view wx:if="{{patrol.byClass.length}}" class="mt">
+      <view wx:for="{{patrol.byClass}}" wx:key="name" class="list-item">
+        <view class="li-main">
+          <view class="li-title">{{item.name}} · {{item.count}} 处</view>
+        </view>
+        <text wx:if="{{item.risk}}" class="pill {{item.riskClass}}">风险 {{item.risk}}</text>
+      </view>
+    </view>
+    <view wx:if="{{patrol.focusText}}" class="small mt">建议重点巡查：{{patrol.focusText}}</view>
+    <view wx:if="{{patrol.byPlot.length}}" class="small muted mt">
+      <text wx:for="{{patrol.byPlot}}" wx:key="plot_id">{{item.plot_name}} {{item.count}} 处<text wx:if="{{index < patrol.byPlot.length - 1}}"> · </text></text>
+    </view>
+    <view wx:for="{{patrol.advice}}" wx:key="class" class="alert warning mt">
+      <view class="al-title">{{item.class}} · 监测要点</view>
+      <view class="al-detail">{{item.monitoring}}</view>
+    </view>
+    <view wx:if="{{patrol.failureText}}" class="alert serious mt">
+      <view class="al-detail">{{patrol.failureText}}，可重新拍这几张补识别</view>
+    </view>
   </view>
 
   <view class="card" id="historyCard">

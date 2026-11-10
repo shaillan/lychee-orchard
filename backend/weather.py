@@ -21,6 +21,11 @@ _RISK_TTL = 30 * 60      # 成功结果缓存 30 分钟
 _FAIL_TTL = 5 * 60       # 失败结果缓存 5 分钟，断网时避免每次请求都等超时
 _CACHE: dict[str, Any] = {"key": None, "expires": 0.0, "risk": None, "loaded": False}
 _LOCK = threading.Lock()
+_REFRESH: dict[str, Any] = {"key": None}   # 正在后台刷新的地区，避免并发重复请求
+
+# 过去 7 天 + 未来 3 天窗口：供裂果风险判断使用，独立缓存
+_EXT_CACHE: dict[str, Any] = {"key": None, "expires": 0.0, "days": None, "loaded": False}
+_EXT_REFRESH: dict[str, Any] = {"key": None}
 
 _REGION_KEY = "weather_region"
 _GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
@@ -256,22 +261,74 @@ def evaluate_risk(days: list[dict] | None, location: str | None = None) -> dict 
     }
 
 
+def _region_key(region: dict) -> tuple:
+    return (round(float(region["lat"]), 3), round(float(region["lon"]), 3))
+
+
+def _refresh_in_background(key: tuple, region: dict) -> None:
+    """过期缓存的后台刷新：外部 HTTP 的 1~3 秒不再算进接口响应时间。"""
+    with _LOCK:
+        if _REFRESH["key"] == key:
+            return
+        _REFRESH["key"] = key
+
+    def run() -> None:
+        try:
+            risk = evaluate_risk(
+                _fetch_days(region["lat"], region["lon"]),
+                location=region.get("label") or region_label(region),
+            )
+            ttl = _RISK_TTL
+        except Exception:
+            risk = None
+            ttl = _FAIL_TTL
+        with _LOCK:
+            _CACHE.update(key=key, loaded=True, expires=time.time() + ttl, risk=risk)
+            _REFRESH["key"] = None
+
+    threading.Thread(target=run, name="weather-refresh", daemon=True).start()
+
+
+def warm_up() -> None:
+    """服务启动时后台预热一次，避免第一个请求承担外部请求延迟。"""
+    if not config.WEATHER_ENABLED:
+        return
+
+    def run() -> None:
+        try:
+            region = get_region()
+            _refresh_in_background(_region_key(region), region)
+            _refresh_ext_in_background(_region_key(region), region)
+        except Exception:
+            pass
+
+    threading.Thread(target=run, name="weather-warmup", daemon=True).start()
+
+
 def get_pest_risk(force: bool = False, region: dict | None = None) -> dict | None:
     """带缓存的入口；关闭开关或任何异常都返回 None。
 
     缓存按地区坐标分槽：切换地区后不会复用旧地区的结论。
+    地区未变但缓存过期时，直接返回旧结论并后台刷新（stale-while-revalidate），
+    只有首次请求 / 切换地区才会同步等待外部接口。
     """
     if not config.WEATHER_ENABLED:
         return None
 
     region = region or get_region()
-    key = (round(float(region["lat"]), 3), round(float(region["lon"]), 3))
+    key = _region_key(region)
 
     now = time.time()
     with _LOCK:
-        if (not force and _CACHE["loaded"] and _CACHE["key"] == key
-                and now < _CACHE["expires"]):
-            return _CACHE["risk"]
+        hit = not force and _CACHE["loaded"] and _CACHE["key"] == key
+        fresh = hit and now < _CACHE["expires"]
+        cached_risk = _CACHE["risk"]
+
+    if fresh:
+        return cached_risk
+    if hit:                      # 过期但地区没变：先返回旧值，后台再刷新
+        _refresh_in_background(key, region)
+        return cached_risk
 
     try:
         risk = evaluate_risk(
@@ -286,3 +343,111 @@ def get_pest_risk(force: bool = False, region: dict | None = None) -> dict | Non
     with _LOCK:
         _CACHE.update(key=key, loaded=True, expires=time.time() + ttl, risk=risk)
     return risk
+
+
+# ---------------------------------------------------------------------------
+# 过去 7 天 + 未来 3 天窗口（裂果风险用）
+# ---------------------------------------------------------------------------
+def _fetch_days_extended(
+    lat: float | None = None,
+    lon: float | None = None,
+    past_days: int = 7,
+    forecast_days: int = 3,
+) -> list[dict]:
+    """一次拉取「过去 7 天 + 未来 3 天」的降雨与气温，按天返回。
+
+    比 _fetch_days 少取湿度（裂果只看雨量），失败抛异常由调用方兜底。
+    """
+    import httpx
+
+    resp = httpx.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={
+            "latitude": config.WEATHER_LAT if lat is None else lat,
+            "longitude": config.WEATHER_LON if lon is None else lon,
+            "daily": (
+                "precipitation_sum,precipitation_probability_max,"
+                "temperature_2m_max,temperature_2m_min"
+            ),
+            "past_days": past_days,
+            "forecast_days": forecast_days,
+            "timezone": "Asia/Shanghai",
+        },
+        timeout=config.WEATHER_TIMEOUT,
+    )
+    resp.raise_for_status()
+    daily = (resp.json() or {}).get("daily") or {}
+
+    days: list[dict] = []
+    for i, day in enumerate(daily.get("time") or []):
+        days.append({
+            "date": day,
+            "precip_mm": _pick(daily.get("precipitation_sum"), i) or 0.0,
+            "precip_prob": _pick(daily.get("precipitation_probability_max"), i) or 0,
+            "temp_max": _pick(daily.get("temperature_2m_max"), i),
+            "temp_min": _pick(daily.get("temperature_2m_min"), i),
+            "humidity": None,
+        })
+    return days
+
+
+def _refresh_ext_in_background(key: tuple, region: dict) -> None:
+    with _LOCK:
+        if _EXT_REFRESH["key"] == key:
+            return
+        _EXT_REFRESH["key"] = key
+
+    def run() -> None:
+        try:
+            days = _fetch_days_extended(region["lat"], region["lon"])
+            ttl = _RISK_TTL
+        except Exception:
+            days = None
+            ttl = _FAIL_TTL
+        with _LOCK:
+            _EXT_CACHE.update(key=key, loaded=True, expires=time.time() + ttl, days=days)
+            _EXT_REFRESH["key"] = None
+
+    threading.Thread(target=run, name="weather-ext-refresh", daemon=True).start()
+
+
+def get_extended_days(
+    force: bool = False,
+    region: dict | None = None,
+    non_blocking: bool = True,
+) -> list[dict] | None:
+    """扩展窗口取数：默认绝不阻塞调用方（/api/todos 用）。
+
+    non_blocking=True 时冷缓存直接返回 None 并后台加载，下一轮自然命中。
+    """
+    if not config.WEATHER_ENABLED:
+        return None
+
+    region = region or get_region()
+    key = _region_key(region)
+
+    now = time.time()
+    with _LOCK:
+        hit = not force and _EXT_CACHE["loaded"] and _EXT_CACHE["key"] == key
+        fresh = hit and now < _EXT_CACHE["expires"]
+        cached_days = _EXT_CACHE["days"]
+
+    if fresh:
+        return cached_days
+    if hit:
+        _refresh_ext_in_background(key, region)
+        return cached_days
+    if non_blocking:
+        _refresh_ext_in_background(key, region)
+        return None
+
+    try:
+        days = _fetch_days_extended(region["lat"], region["lon"])
+        ttl = _RISK_TTL
+    except Exception:
+        days = None
+        ttl = _FAIL_TTL
+
+    with _LOCK:
+        _EXT_CACHE.update(key=key, loaded=True, expires=time.time() + ttl, days=days)
+    return days

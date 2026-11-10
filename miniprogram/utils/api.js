@@ -7,6 +7,7 @@ function request(path, method, data) {
       method: method || 'GET',
       data: data || {},
       header: { 'content-type': 'application/json' },
+      timeout: 10000,   // 默认 60s 会让「没反应」持续一分钟，超时就报错让页面重试
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);

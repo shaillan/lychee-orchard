@@ -101,8 +101,16 @@ Page({
       wx.switchTab({ url: '/pages/form/form' });
       return;
     }
-    if (type === 'batch') {
+    if (type === 'batch' || type === 'coldchain' || type === 'residue') {
       wx.navigateTo({ url: '/pages/batches/batches' });
+      return;
+    }
+    if (type === 'harvest' || type === 'crack') {
+      if (plotId) {
+        wx.navigateTo({ url: '/pages/plot/plot?id=' + plotId });
+      } else {
+        wx.switchTab({ url: '/pages/plots/plots' });
+      }
       return;
     }
     wx.showToast({ title: '暂不支持该操作', icon: 'none' });

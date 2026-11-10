@@ -49,6 +49,11 @@
       }
     ]
   },
+  "permission": {
+    "scope.record": {
+      "desc": "用于语音填写农事备注"
+    }
+  },
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

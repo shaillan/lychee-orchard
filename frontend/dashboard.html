@@ -72,7 +72,12 @@ async function loadSummary(){
     <div class="alert critical"><div class="al-title">${u.plot}：用药安全间隔期内</div>
     <div class="al-detail">${u.message}</div></div>`).join('');
   const blocked = s.blocked_batches ? `<div class="alert serious"><div class="al-title">${s.blocked_batches} 个批次被拦截</div><div class="al-detail">安全间隔期未满，暂不能生成销售溯源码</div></div>` : '';
-  $('#alerts').innerHTML = alertHtml + blocked;
+  const cold = s.coldchain_overdue ? `<div class="alert critical"><div class="al-title">${s.coldchain_overdue} 个批次离树超 24 小时未预冷</div><div class="al-detail">荔枝一日色变，请尽快预冷并登记冷链节点</div></div>` : '';
+  const residue = s.residue_unqualified ? `<div class="alert critical"><div class="al-title">${s.residue_unqualified} 个批次农残检测不合格</div><div class="al-detail">已拦截，禁止销售；请复核检测记录与用药台账</div></div>` : '';
+  const harvest = (s.harvest_ready || []).map(h=>`
+    <div class="alert warning"><div class="al-title">${esc(h.plot)} ${esc(h.variety)}：${esc(h.status)}最佳采收期</div>
+    <div class="al-detail">${esc(h.label)}${h.status==='最佳' ? ` · 窗口剩余 ${h.days_remaining} 天` : ` · ${h.days_to_start} 天后开始`}</div></div>`).join('');
+  $('#alerts').innerHTML = alertHtml + blocked + cold + residue + harvest;
 }
 
 async function loadCompliance(){

@@ -51,10 +51,16 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
+// 10 秒超时：后端卡住时不要一直转圈，直接走错误态 + 重试
+function fetchT(u, opts){
+  if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return fetch(u, Object.assign({signal:AbortSignal.timeout(10000)}, opts||{}));
+  const c = new AbortController(); const t = setTimeout(()=>c.abort(), 10000);
+  return fetch(u, Object.assign({signal:c.signal}, opts||{})).finally(()=>clearTimeout(t));
+}
 const api = {
-  async get(u){ const r = await fetch(u); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); },
-  async post(u, body, isForm){ const r = await fetch(u, { method:'POST', headers: isForm?undefined:{'Content-Type':'application/json'}, body: isForm?body:JSON.stringify(body) }); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); },
-  async put(u, body){ const r = await fetch(u, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); }
+  async get(u){ const r = await fetchT(u); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); },
+  async post(u, body, isForm){ const r = await fetchT(u, { method:'POST', headers: isForm?undefined:{'Content-Type':'application/json'}, body: isForm?body:JSON.stringify(body) }); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); },
+  async put(u, body){ const r = await fetchT(u, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); if(!r.ok) throw new Error((await r.json()).detail||r.status); return r.json(); }
 };
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // 识别来源：mock_fallback 要区分「没配 Key」和「云端调用失败」
@@ -142,9 +148,12 @@ async function loadTodos(){
   } catch(e){ el.innerHTML = `<div class="card">加载失败：${esc(e.message)}</div>`; }
 }
 
-/* 待办动作：查看用药台账 / 去填报 / 查看批次 */
+/* 待办动作：查看用药台账 / 去填报 / 查看批次 / 采收窗口 / 冷链 / 检测 */
 function goTodoAction(type, plotId){
-  if(type === 'safety' || type === 'batch'){ plotId ? goPlotDetail(plotId) : switchTab('plots'); return; }
+  if(type === 'safety' || type === 'batch' || type === 'coldchain' ||
+     type === 'residue' || type === 'harvest' || type === 'crack'){
+    plotId ? goPlotDetail(plotId) : switchTab('plots'); return;
+  }
   if(type === 'operation'){ switchTab('form'); return; }
 }
 
@@ -162,8 +171,11 @@ async function loadPlots(){
       const s = p.safety;
       const pill = s.safe ? '<span class="pill good"><span class="dot"></span>可采收</span>'
         : `<span class="pill critical"><span class="dot"></span>还需 ${s.remaining_days} 天</span>`;
+      const m = p.maturity || {};
+      const mCls = m.status==='最佳' ? 'good' : (m.status==='已过' ? 'critical' : (m.status==='临近' ? 'warning' : 'neutral'));
+      const mPill = m.status ? `<span class="pill ${mCls}"><span class="dot"></span>采收期：${esc(m.status)}</span>` : '';
       return `<div class="card" style="cursor:pointer" onclick="openPlot(${p.id})">
-        <h2>${esc(p.name)} ${pill}</h2>
+        <h2>${esc(p.name)} ${pill} ${mPill}</h2>
         <div class="kv"><span class="k">品种</span><span class="v">${esc(p.variety)}</span></div>
         <div class="kv"><span class="k">面积 / 株数</span><span class="v">${p.area_mu} 亩 · ${p.tree_count} 株</span></div>
         <div class="kv"><span class="k">定植年份</span><span class="v">${p.planting_year}</span></div>
@@ -183,6 +195,32 @@ async function openPlot(id){
     const s = p.safety;
     const ops = p.operations.slice(0,8).map(o=>`<div class="list-item"><div class="li-main"><div class="li-title">${esc(o.operation_type)}</div><div class="li-desc">${esc(o.operator)} · ${o.operation_date}</div></div></div>`).join('');
     const psts = p.pesticides.slice(0,5).map(r=>`<div class="list-item"><div class="li-main"><div class="li-title">${esc(r.pesticide_name)}</div><div class="li-desc">${r.apply_time} · 安全间隔期 ${r.safe_interval_days} 天</div></div></div>`).join('');
+
+    // 采收窗口：纯日历规则；成熟度观察只作为佐证展示
+    const m = p.maturity || {};
+    const mCls = m.status==='最佳' ? 'good' : (m.status==='已过' ? 'critical' : (m.status==='临近' ? 'warning' : 'neutral'));
+    const mAux = m.status==='临近'
+      ? `<div class="kv"><span class="k">距窗口开始</span><span class="v">${m.days_to_start} 天</span></div>`
+      : (m.status==='最佳'
+        ? `<div class="kv"><span class="k">窗口剩余</span><span class="v">${m.days_remaining} 天</span></div>`
+        : (m.status==='已过'
+          ? `<div class="kv"><span class="k">已过窗口</span><span class="v">${m.days_overdue} 天</span></div>` : ''));
+    const maturityCard = m.window_start ? `
+      <div class="card">
+        <h2>采收窗口 <span class="pill ${mCls}"><span class="dot"></span>${esc(m.status)}</span></h2>
+        <div class="kv"><span class="k">最佳采收期</span><span class="v">${m.window_start} ~ ${m.window_end}</span></div>
+        <div class="kv"><span class="k">当前物候期</span><span class="v">${esc(m.phenology||'')}</span></div>
+        ${mAux}
+        ${m.label?`<div class="small muted mt">${esc(m.label)}</div>`:''}
+      </div>` : '';
+    const lastCheckOp = (p.operations||[]).find(o=>o.operation_type==='成熟度观察');
+    let lastCheck = '';
+    if(lastCheckOp){
+      let d = {};
+      try { d = JSON.parse(lastCheckOp.detail || '{}') || {}; } catch(e){ d = {}; }
+      lastCheck = `<div class="small mt">最近观察：成熟度 ${d.ripeness ?? '—'}% · ${esc(lastCheckOp.operation_date)} · ${esc(lastCheckOp.operator||'')}${d.note?`<br>${esc(d.note)}`:''}</div>`;
+    }
+
     el.innerHTML = `
       <button class="btn ghost small" onclick="loadPlots()">← 返回</button>
       <div class="card mt">
@@ -192,6 +230,8 @@ async function openPlot(id){
         <div class="kv"><span class="k">位置</span><span class="v">${esc(p.location)}</span></div>
         ${s.safe?'':`<div class="alert critical mt"><div class="al-title">用药安全间隔期内</div><div class="al-detail">${esc(s.message)}</div></div>`}
       </div>
+      ${maturityCard}
+      ${lastCheck?`<div class="card">${lastCheck}</div>`:''}
       <div class="card"><h2>最近农事记录</h2>${ops||'<div class="muted">暂无记录</div>'}</div>
       <div class="card"><h2>最近用药台账</h2>${psts||'<div class="muted">暂无记录</div>'}</div>`;
   } catch(e){ el.innerHTML = `<div class="card">加载失败：${esc(e.message)}</div>`; }

@@ -40,6 +40,21 @@ function certHtml(t, cv){
     : '<tr><td colspan="5">无用药记录</td></tr>';
   const blocked = t.status !== 'released';
   const today = new Date().toISOString().slice(0,10);
+  const cc = (t.sales && t.sales.cold_chain) || {};
+  const coldLine = `离树 ${cc.hours_since_harvest != null ? Math.round(cc.hours_since_harvest) : '—'} 小时 · 预冷 ${cc.precooled_at || '未记录'} · 发运 ${cc.shipped_at || '未记录'} · 到达 ${cc.arrived_at || '未记录'}`;
+  const residues = (t.sales && t.sales.residue_tests) || [];
+  const residueRows = residues.length
+    ? residues.slice(0, 3).map(r => (r.items && r.items.length)
+        ? r.items.map(i=>`<tr>
+            <td>${esc(i.name)}</td>
+            <td>${esc(r.tested_at)}</td>
+            <td>${esc(r.lab || '—')}</td>
+            <td>${esc(i.value)} ${esc(i.unit || '')}</td>
+            <td>${esc(i.limit || '—')}</td>
+            <td>${esc(r.conclusion)}</td>
+          </tr>`).join('')
+        : `<tr><td colspan="6">${esc(r.tested_at)} · ${esc(r.lab || '—')} · ${esc(r.conclusion)}（未录入检测项）</td></tr>`).join('')
+    : '<tr><td colspan="6">暂无农残快检记录</td></tr>';
   return `<div id="certificate" class="certificate${blocked ? ' blocked' : ''}">
     ${blocked ? '<div class="cert-banner">已拦截 · 不得销售</div>' : ''}
     <div class="cert-inner">
@@ -57,6 +72,7 @@ function certHtml(t, cv){
           <div class="cert-row"><div class="cert-k">采收日期</div><div class="cert-v">${esc(t.harvest_date)}</div></div>
           <div class="cert-row"><div class="cert-k">农残检测</div><div class="cert-v">${esc(t.sales.detection_report)}</div></div>
           <div class="cert-row"><div class="cert-k">包装 / 物流</div><div class="cert-v">${esc(t.sales.packaging)}${t.sales.logistics ? ' · ' + esc(t.sales.logistics) : ''}</div></div>
+          <div class="cert-row"><div class="cert-k">采后冷链</div><div class="cert-v">${coldLine}</div></div>
           ${blocked ? `<div class="cert-row"><div class="cert-k">拦截原因</div><div class="cert-v cert-reason">${esc(t.block_reason)}</div></div>` : ''}
         </div>
         <div class="cert-side">
@@ -68,6 +84,11 @@ function certHtml(t, cv){
       <table class="cert-table">
         <thead><tr><th>药剂</th><th>施药日期</th><th>安全间隔期(天)</th><th>最早可采日</th><th>状态</th></tr></thead>
         <tbody>${pRows}</tbody>
+      </table>
+      <div style="margin-top:10px;font-weight:700;font-size:13px">农残快检结果</div>
+      <table class="cert-table">
+        <thead><tr><th>检测项</th><th>检测日期</th><th>检测机构</th><th>实测值</th><th>限量</th><th>结论</th></tr></thead>
+        <tbody>${residueRows}</tbody>
       </table>
       <div class="cert-foot">
         <span>${cv.valid ? '哈希链校验通过' : '哈希链校验失败'} · 共 ${cv.total} 条存证</span>
@@ -116,6 +137,28 @@ async function loadTrace(){
     const legacyNote = (cv.legacy||[]).length
       ? `<div class="small muted mt">${cv.legacy.length} 条历史记录未存原文，未参与重算</div>` : '';
 
+    const sales = t.sales || {};
+    const cc = sales.cold_chain || {};
+    const COLD_TEXT = { pending:'待预冷', overdue:'预冷超时', cooling:'已预冷',
+                        transit:'运输中', arrived:'已到货', legacy:'无采后记录' };
+    const COLD_CLS = { pending:'warning', overdue:'critical', cooling:'good',
+                       transit:'good', arrived:'good', legacy:'neutral' };
+    const coldPill = `<span class="pill ${COLD_CLS[cc.status]||'neutral'}"><span class="dot"></span>${COLD_TEXT[cc.status]||'—'}</span>`;
+    const residues = sales.residue_tests || [];
+    const residuePill = `<span class="pill ${sales.residue_conclusion==='合格'?'good':(sales.residue_conclusion==='不合格'?'critical':'warning')}"><span class="dot"></span>${esc(sales.residue_conclusion||'待检测')}</span>`;
+    const residueList = residues.length ? residues.map(r=>{
+      const cls = r.conclusion==='合格' ? 'good' : (r.conclusion==='不合格' ? 'critical' : 'warning');
+      const items = (r.items||[]).map(i=>esc(i.name+' '+i.value+(i.unit?' '+i.unit:'')+(i.limit?'（限量 '+i.limit+'）':''))).join('；');
+      return `<div class="list-item">
+        <div class="li-main">
+          <div class="li-title">${esc(r.lab||'检测机构未填')} · ${esc(r.tested_at)}</div>
+          <div class="li-desc">${items || '未录入检测项'}</div>
+          ${r.note?`<div class="li-desc">${esc(r.note)}</div>`:''}
+        </div>
+        <div class="li-side"><span class="pill ${cls}"><span class="dot"></span>${esc(r.conclusion)}</span></div>
+      </div>`;
+    }).join('') : '<div class="muted small">暂无检测记录</div>';
+
     document.getElementById('traceResult').innerHTML = `
       <div class="trace-view">
       <div class="trace-hero card">
@@ -152,6 +195,16 @@ async function loadTrace(){
         <div class="kv"><span class="k">农残检测</span><span class="v">${esc(t.sales.detection_report)}</span></div>
         <div class="kv"><span class="k">包装</span><span class="v">${esc(t.sales.packaging)}</span></div>
         <div class="kv"><span class="k">物流</span><span class="v">${esc(t.sales.logistics)||'—'}</span></div>
+
+        <div class="seg-sub">采后冷链 ${coldPill}</div>
+        <div class="kv"><span class="k">离树时间</span><span class="v">${esc(cc.harvest_at)||'未记录'}${cc.harvest_at_estimated?'（估算）':''}</span></div>
+        <div class="kv"><span class="k">离树时长</span><span class="v">${cc.hours_since_harvest != null ? Math.round(cc.hours_since_harvest)+' 小时' : '—'}</span></div>
+        <div class="kv"><span class="k">预冷完成</span><span class="v">${esc(cc.precooled_at)||'未记录'}</span></div>
+        <div class="kv"><span class="k">装车发运</span><span class="v">${esc(cc.shipped_at)||'未记录'}</span></div>
+        <div class="kv"><span class="k">到货</span><span class="v">${esc(cc.arrived_at)||'未记录'}</span></div>
+
+        <div class="seg-sub">农残快检 ${residuePill}</div>
+        ${residueList}
       </div>
 
       ${hashes?`<div class="card trace-seg"><div class="seg-head"><span class="n">🔗</span>哈希存证链（可校验） ${chainBadge}</div>${hashes}${legacyNote}</div>`:''}

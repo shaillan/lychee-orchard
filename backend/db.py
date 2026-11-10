@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS recognitions (
     handle_note     TEXT,
     pesticide_record_id INTEGER,                       -- 用药处置回链 pesticide_records.id
     operation_id    INTEGER,                           -- 农事处置回链 farm_operations.id
+    patrol_id       TEXT,                              -- 同一次「进园巡拍」共享的批次号
     created_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_rec_created ON recognitions(created_at);
@@ -99,8 +100,27 @@ CREATE TABLE IF NOT EXISTS batches (
     detection_report TEXT,
     packaging_info  TEXT,
     logistics       TEXT,
+    harvest_at      TEXT,                   -- 离树时间；为空时按 harvest_date 06:00 估算
+    precooled_at    TEXT,                   -- 预冷完成
+    shipped_at      TEXT,                   -- 装车发运
+    arrived_at      TEXT,                   -- 到货
     created_at      TEXT NOT NULL
 );
+
+-- 农残快检记录：报告图 + 检测项 + 结论，不合格会把批次改为 blocked
+CREATE TABLE IF NOT EXISTS residue_tests (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_id    INTEGER NOT NULL REFERENCES batches(id),
+    tested_at   TEXT NOT NULL,
+    lab         TEXT,
+    conclusion  TEXT NOT NULL,              -- 合格 | 不合格 | 待复检
+    items_json  TEXT,                       -- [{name,value,unit,limit,passed}]
+    report_url  TEXT,                       -- /static/uploads/xxx.jpg
+    operator    TEXT,
+    note        TEXT,
+    created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_residue_batch ON residue_tests(batch_id);
 
 -- 追加式哈希日志：每条记录携带上一条哈希，形成可校验的链
 CREATE TABLE IF NOT EXISTS trace_hash_log (
@@ -163,6 +183,17 @@ def _migrate(conn) -> None:
         conn.execute("ALTER TABLE recognitions ADD COLUMN handle_note TEXT")
         conn.execute("ALTER TABLE recognitions ADD COLUMN pesticide_record_id INTEGER")
         conn.execute("ALTER TABLE recognitions ADD COLUMN operation_id INTEGER")
+
+    # 巡园批次号：旧库补列 + 索引
+    if "patrol_id" not in rec_columns:
+        conn.execute("ALTER TABLE recognitions ADD COLUMN patrol_id TEXT")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rec_patrol ON recognitions(patrol_id)")
+
+    # 采后冷链：旧库补四个时间戳
+    batch_columns = {row["name"] for row in conn.execute("PRAGMA table_info(batches)")}
+    for column in ("harvest_at", "precooled_at", "shipped_at", "arrived_at"):
+        if column not in batch_columns:
+            conn.execute(f"ALTER TABLE batches ADD COLUMN {column} TEXT")
 
 
 def rows_to_dicts(rows) -> list[dict]:

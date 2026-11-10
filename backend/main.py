@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import logging
+import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -14,13 +15,13 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import ai_service, config, weather
+from . import ai_service, config, crack, maturity, patrol, weather
 from .db import get_conn, init_db, rows_to_dicts
 from .rules import (
     PESTICIDES, PESTICIDE_BY_CAS, PESTICIDE_BY_NAME, PESTS, build_suggestion,
     validate_knowledge,
 )
-from .seed import seed_if_empty
+from .seed import seed_extras_if_missing, seed_if_empty
 from .traceability import append_hash, make_batch_no, verify_chain
 
 logger = logging.getLogger(__name__)
@@ -42,9 +43,11 @@ app.mount("/assets", StaticFiles(directory=FRONTEND_DIR), name="assets")
 def _startup() -> None:
     init_db()
     seed_if_empty()
+    seed_extras_if_missing()
     problems = validate_knowledge()
     if problems:  # 只告警不阻断：数据笔误不能把演示环境拖垮
         logger.warning("知识库自检发现 %d 个问题：%s", len(problems), "；".join(problems))
+    weather.warm_up()  # 后台预热天气风险缓存，首个 /api/todos 不再等外部接口
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +88,37 @@ class BatchIn(BaseModel):
     plot_id: int
     harvest_date: str
     packaging_seq: int = 1
+    harvest_at: str | None = None
+
+
+class BatchEventIn(BaseModel):
+    event: str                     # precool | ship | arrive
+    at: str | None = None
+    operator: str = "果农"
+
+
+class MaturityCheckIn(BaseModel):
+    ripeness: int = Field(ge=0, le=100)
+    note: str = ""
+    image_url: str | None = None
+
+
+class ResidueItemIn(BaseModel):
+    name: str
+    value: str = ""
+    unit: str = ""
+    limit: str = ""
+    passed: bool | None = None
+
+
+class ResidueTestIn(BaseModel):
+    tested_at: str | None = None
+    lab: str = ""
+    conclusion: str                 # 合格 | 不合格 | 待复检
+    items: list[ResidueItemIn] = Field(default_factory=list)
+    report_url: str | None = None
+    operator: str = "果农"
+    note: str = ""
 
 
 class DemoRecognitionIn(BaseModel):
@@ -92,6 +126,7 @@ class DemoRecognitionIn(BaseModel):
     plot_id: int | None = None
     confidence: float = 0.92
     days_to_harvest: int | None = None
+    patrol_id: str | None = None
 
 
 class RecognitionHandleIn(BaseModel):
@@ -198,6 +233,120 @@ def check_safety(conn, plot_id: int, harvest_date: str) -> dict:
             "message": "所有用药均已过安全间隔期，可采收"}
 
 
+def _parse_dt(value: str) -> datetime:
+    """接受 'YYYY-MM-DD' 或 'YYYY-MM-DD HH:MM:SS'，统一成 datetime。"""
+    text = str(value or "").strip()
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    raise HTTPException(400, f"时间格式应为 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS：{value}")
+
+
+def _cold_chain_for(batch: dict, now: datetime | None = None) -> dict:
+    """把批次上的四个时间戳换算成采后时效状态（纯函数，供 trace/列表/待办复用）。"""
+    now = now or datetime.now()
+    estimated = not batch.get("harvest_at")
+    try:
+        harvest_at = _parse_dt(batch["harvest_at"]) if batch.get("harvest_at") \
+            else _parse_dt(f"{batch['harvest_date']} 06:00:00")
+    except (HTTPException, KeyError):
+        return {
+            "harvest_at": None, "harvest_at_estimated": True,
+            "precooled_at": None, "shipped_at": None, "arrived_at": None,
+            "hours_since_harvest": None, "precool_hours": None,
+            "stage": "harvested", "status": "legacy", "message": "采收时间缺失",
+        }
+
+    age_hours = (now - harvest_at).total_seconds() / 3600
+    precise = lambda key: batch.get(key) or None
+    precooled_at, shipped_at, arrived_at = precise("precooled_at"), precise("shipped_at"), precise("arrived_at")
+
+    precool_hours = None
+    if precooled_at:
+        try:
+            precool_hours = round((_parse_dt(precooled_at) - harvest_at).total_seconds() / 3600, 1)
+        except HTTPException:
+            precool_hours = None
+
+    if arrived_at:
+        stage, status = "arrived", "arrived"
+    elif shipped_at:
+        stage, status = "shipped", "transit"
+    elif precooled_at:
+        stage, status = "precooled", "cooling"
+    else:
+        stage = "harvested"
+        if estimated and age_hours > 24 * 7:
+            status = "legacy"
+        else:
+            status = "overdue" if age_hours > 24 else "pending"
+
+    if status == "overdue":
+        message = f"离树 {age_hours:.0f} 小时仍未预冷，品质开始下降"
+    elif status == "pending":
+        message = f"离树 {age_hours:.0f} 小时，建议 24 小时内完成预冷"
+    elif status == "cooling":
+        message = f"已预冷（离树 {precool_hours if precool_hours is not None else '—'} 小时），待装车"
+    elif status == "transit":
+        message = "冷链运输中"
+    elif status == "arrived":
+        message = "已到货"
+    else:
+        message = "历史批次，无采后记录"
+
+    return {
+        "harvest_at": harvest_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "harvest_at_estimated": estimated,
+        "precooled_at": precooled_at,
+        "shipped_at": shipped_at,
+        "arrived_at": arrived_at,
+        "hours_since_harvest": round(age_hours, 1) if age_hours >= 0 else 0.0,
+        "precool_hours": precool_hours,
+        "stage": stage,
+        "status": status,
+        "message": message,
+    }
+
+
+def _maturity_for(plot: dict, today: date | None = None) -> dict:
+    """地块成熟度/采收窗口：纯日历规则，附带当前物候期。"""
+    info = maturity.window_for(plot.get("variety") or "", today)
+    info["phenology"] = maturity.phenology(plot.get("variety") or "", today)
+    return info
+
+
+def _residue_rows(conn, batch_id: int) -> list[dict]:
+    rows = rows_to_dicts(conn.execute(
+        "SELECT * FROM residue_tests WHERE batch_id=? ORDER BY tested_at DESC, id DESC",
+        (batch_id,)).fetchall())
+    for row in rows:
+        try:
+            row["items"] = json.loads(row.pop("items_json") or "[]")
+        except (TypeError, ValueError):
+            row["items"] = []
+    return rows
+
+
+def _residue_conclusion(rows: list[dict]) -> str:
+    """最新一条结论优先；没有记录时为「待检测」。"""
+    return rows[0]["conclusion"] if rows else "待检测"
+
+
+_PATROL_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+
+
+def _clean_patrol_id(value: str | None) -> str | None:
+    """巡园编号只用于聚合同一批照片，做白名单校验防止拼进 SQL/日志的意外字符。"""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if not _PATROL_ID_RE.fullmatch(text):
+        raise HTTPException(400, "巡园编号只允许字母、数字、下划线、连字符（6~64 位）")
+    return text
+
+
 def _compliance_row(rec: dict, as_of: date | None = None) -> dict:
     """把一条用药台账换算成合规明细：最早可采日 + 剩余天数 + 状态。"""
     try:
@@ -281,6 +430,7 @@ def list_plots():
         plots = rows_to_dicts(conn.execute("SELECT * FROM plots ORDER BY code").fetchall())
         for p in plots:
             p["safety"] = check_safety(conn, p["id"], _today())
+            p["maturity"] = _maturity_for(p)
         return plots
 
 
@@ -297,6 +447,7 @@ def get_plot(plot_id: int):
         plot["yields"] = rows_to_dicts(conn.execute(
             "SELECT * FROM yield_records WHERE plot_id=? ORDER BY season", (plot_id,)).fetchall())
         plot["safety"] = check_safety(conn, plot_id, _today())
+        plot["maturity"] = _maturity_for(plot)
         return plot
 
 
@@ -313,6 +464,36 @@ def create_plot(payload: PlotIn):
         except Exception:
             raise HTTPException(400, "地块编号已存在")
         return {"id": cur.lastrowid, **payload.model_dump()}
+
+
+@app.post("/api/plots/{plot_id}/maturity-check")
+def add_maturity_check(plot_id: int, payload: MaturityCheckIn):
+    """拍照佐证：把一次人工成熟度观察写成农事记录，供地块档案回看。
+
+    规则判定仍以品种日历为准，评分与照片只作为现场证据，不改变采收窗口。
+    """
+    with get_conn() as conn:
+        plot = _plot_or_404(conn, plot_id)
+        detail = {
+            "ripeness": payload.ripeness,
+            "note": payload.note,
+            "image_url": payload.image_url,
+        }
+        now = datetime.now()
+        cur = conn.execute(
+            "INSERT INTO farm_operations(plot_id, operation_type, operator, operation_date, "
+            "detail, images, created_at) VALUES (?,?,?,?,?,?,?)",
+            (plot_id, "成熟度观察", "果农", now.date().isoformat(),
+             json.dumps(detail, ensure_ascii=False),
+             json.dumps([payload.image_url] if payload.image_url else [], ensure_ascii=False),
+             now.isoformat(timespec="seconds")),
+        )
+        return {
+            "id": cur.lastrowid,
+            "plot_id": plot_id,
+            "maturity": _maturity_for(plot),
+            "check": detail,
+        }
 
 
 @app.get("/api/operations")
@@ -396,6 +577,7 @@ async def create_recognition(
     file: UploadFile = File(...),
     plot_id: int | None = Form(None),
     days_to_harvest: int | None = Form(None),
+    patrol_id: str | None = Form(None),
 ):
     data = await file.read()
     if not data:
@@ -409,16 +591,19 @@ async def create_recognition(
     with get_conn() as conn:
         cur = conn.execute(
             "INSERT INTO recognitions(plot_id, user_id, image_url, detected_class, confidence, bbox, "
-            "suggestion_text, suggestion_json, is_mock, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "suggestion_text, suggestion_json, is_mock, patrol_id, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (plot_id, "farmer_01", url, result["pest_class"], result["confidence"],
              json.dumps(result["bbox"]), result["suggestion"]["text"],
              json.dumps(result["suggestion"], ensure_ascii=False),
-             int(result["is_mock"]), datetime.now().isoformat(timespec="seconds")),
+             int(result["is_mock"]), _clean_patrol_id(patrol_id),
+             datetime.now().isoformat(timespec="seconds")),
         )
         result["id"] = cur.lastrowid
         result["image_url"] = url
         result["status"] = "pending"
         result["plot_id"] = plot_id
+        result["patrol_id"] = _clean_patrol_id(patrol_id)
         return result
 
 
@@ -426,17 +611,20 @@ async def create_recognition(
 def create_demo_recognition(payload: DemoRecognitionIn):
     result = ai_service.recognize_known(payload.pest_class, payload.confidence, payload.days_to_harvest)
     with get_conn() as conn:
+        patrol_id = _clean_patrol_id(payload.patrol_id)
         cur = conn.execute(
             "INSERT INTO recognitions(plot_id, user_id, image_url, detected_class, confidence, bbox, "
-            "suggestion_text, suggestion_json, is_mock, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "suggestion_text, suggestion_json, is_mock, patrol_id, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (payload.plot_id, "demo", "", result["pest_class"], result["confidence"],
              json.dumps(result["bbox"]), result["suggestion"]["text"],
-             json.dumps(result["suggestion"], ensure_ascii=False), 1,
+             json.dumps(result["suggestion"], ensure_ascii=False), 1, patrol_id,
              datetime.now().isoformat(timespec="seconds")),
         )
         result["id"] = cur.lastrowid
         result["status"] = "pending"
         result["plot_id"] = payload.plot_id
+        result["patrol_id"] = patrol_id
         return result
 
 
@@ -465,6 +653,26 @@ def list_recognitions(
         sql += "ORDER BY r.created_at DESC LIMIT ?"
         args.append(limit)
         return rows_to_dicts(conn.execute(sql, tuple(args)).fetchall())
+
+
+@app.get("/api/patrols/{patrol_id}")
+def get_patrol(patrol_id: str):
+    """把同一次巡园上传的多张识别结果聚合成一份现场结论。"""
+    if not _PATROL_ID_RE.fullmatch(patrol_id):
+        raise HTTPException(400, "巡园编号只允许字母、数字、下划线、连字符（6~64 位）")
+    with get_conn() as conn:
+        rows = rows_to_dicts(conn.execute(
+            "SELECT * FROM recognitions WHERE patrol_id=? ORDER BY id", (patrol_id,)).fetchall())
+        if not rows:
+            raise HTTPException(404, "该次巡园没有识别记录")
+        plot_names = {r["id"]: r["name"] for r in conn.execute("SELECT id, name FROM plots").fetchall()}
+        report = patrol.build_patrol_report(rows, plot_names, patrol_id)
+        report["items"] = [
+            {"id": r["id"], "plot_id": r["plot_id"], "detected_class": r["detected_class"],
+             "confidence": r["confidence"], "image_url": r["image_url"], "status": r["status"]}
+            for r in rows
+        ]
+        return report
 
 
 @app.post("/api/recognitions/{rid}/handle")
@@ -567,15 +775,18 @@ def create_batch(payload: BatchIn):
         batch_no = make_batch_no(plot["code"], payload.harvest_date, payload.packaging_seq)
         status = "released" if safety["safe"] else "blocked"
         block_reason = None if safety["safe"] else safety["message"]
+        harvest_at = payload.harvest_at
+        if harvest_at:
+            _parse_dt(harvest_at)  # 只做格式校验，原样存
         try:
             cur = conn.execute(
                 "INSERT INTO batches(batch_no, plot_id, variety, harvest_date, trace_code, packaging_seq, "
-                "status, block_reason, detection_report, packaging_info, logistics, created_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                "status, block_reason, detection_report, packaging_info, logistics, harvest_at, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (batch_no, payload.plot_id, plot["variety"], payload.harvest_date, batch_no,
                  payload.packaging_seq, status, block_reason,
-                 "待检测" if status == "blocked" else "农残快检合格（模板数据）",
-                 "5kg 泡沫箱 · 冷链", "", datetime.now().isoformat(timespec="seconds")),
+                 "待检测", "5kg 泡沫箱 · 冷链", "", harvest_at,
+                 datetime.now().isoformat(timespec="seconds")),
             )
         except Exception:
             raise HTTPException(400, "该地块当日该顺序号的批次已存在")
@@ -585,10 +796,13 @@ def create_batch(payload: BatchIn):
                         {"batch_no": batch_no, "stage": "种植", "plot": plot["code"]}, "种植档案摘要")
             append_hash(conn, batch_id,
                         {"batch_no": batch_no, "stage": "管护", "safety": safety["message"]}, "管护记录摘要")
+        row = dict(conn.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone())
         return {
             "id": batch_id, "batch_no": batch_no, "trace_code": batch_no,
             "status": status, "block_reason": block_reason,
             "qrcode_url": f"/api/batches/{batch_no}/qrcode",
+            "cold_chain": _cold_chain_for(row),
+            "residue_conclusion": "待检测",
         }
 
 
@@ -600,7 +814,128 @@ def list_batches():
             "ORDER BY b.created_at DESC").fetchall())
         for r in rows:
             r["qrcode_url"] = f"/api/batches/{r['batch_no']}/qrcode"
+            r["cold_chain"] = _cold_chain_for(r)
+            r["residue_tests"] = _residue_rows(conn, r["id"])
+            r["residue_conclusion"] = _residue_conclusion(r["residue_tests"])
         return rows
+
+
+def _batch_or_404(conn, batch_no: str) -> dict:
+    row = conn.execute("SELECT * FROM batches WHERE batch_no=?", (batch_no,)).fetchone()
+    if not row:
+        raise HTTPException(404, "批次不存在")
+    return dict(row)
+
+
+@app.post("/api/batches/{batch_no}/cold-chain")
+def record_cold_chain(batch_no: str, payload: BatchEventIn):
+    """登记采后冷链节点：precool → ship → arrive，顺序递增、不可重复。"""
+    event = (payload.event or "").strip().lower()
+    column = {"precool": "precooled_at", "ship": "shipped_at", "arrive": "arrived_at"}.get(event)
+    if not column:
+        raise HTTPException(400, "event 取值应为 precool / ship / arrive")
+
+    with get_conn() as conn:
+        batch = _batch_or_404(conn, batch_no)
+        if batch["status"] != "released":
+            raise HTTPException(400, "拦截批次不能登记冷链，请先处理拦截原因")
+
+        at = _parse_dt(payload.at) if payload.at else datetime.now()
+        if at.date().isoformat() < batch["harvest_date"]:
+            raise HTTPException(400, "冷链节点时间不能早于采收日期")
+
+        chain = _cold_chain_for(batch, now=at)
+        harvest_at = _parse_dt(chain["harvest_at"]) if chain.get("harvest_at") else None
+        if harvest_at and at < harvest_at:
+            raise HTTPException(400, "冷链节点时间不能早于离树时间")
+
+        order = ["precooled_at", "shipped_at", "arrived_at"]
+        index = order.index(column)
+        if batch.get(column):
+            raise HTTPException(409, "该冷链节点已登记")
+        for earlier in order[:index]:
+            if not batch.get(earlier):
+                raise HTTPException(400, f"请先登记 {earlier.replace('_at', '')} 节点")
+
+        stamp = at.strftime("%Y-%m-%d %H:%M:%S")
+        label = {"precool": "预冷", "ship": "发运", "arrive": "到货"}[event]
+        conn.execute(f"UPDATE batches SET {column}=? WHERE id=?", (stamp, batch["id"]))
+        batch[column] = stamp
+        append_hash(conn, batch["id"],
+                    {"batch_no": batch_no, "stage": "冷链", "event": event, "at": stamp},
+                    f"冷链·{label}")
+        return {"batch_no": batch_no, "event": event, "cold_chain": _cold_chain_for(batch)}
+
+
+@app.post("/api/batches/{batch_no}/residue-tests")
+def add_residue_test(batch_no: str, payload: ResidueTestIn):
+    """录入农残快检：写检测记录 + 存证；不合格会把已放行批次改为拦截。"""
+    conclusion = (payload.conclusion or "").strip()
+    if conclusion not in {"合格", "不合格", "待复检"}:
+        raise HTTPException(400, "conclusion 取值应为 合格 / 不合格 / 待复检")
+
+    tested_at = payload.tested_at or _today()
+    _parse_date(tested_at)
+
+    with get_conn() as conn:
+        batch = _batch_or_404(conn, batch_no)
+        items = [item.model_dump() for item in payload.items]
+        now = datetime.now().isoformat(timespec="seconds")
+        cur = conn.execute(
+            "INSERT INTO residue_tests(batch_id, tested_at, lab, conclusion, items_json, "
+            "report_url, operator, note, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            (batch["id"], tested_at, payload.lab, conclusion,
+             json.dumps(items, ensure_ascii=False), payload.report_url,
+             payload.operator, payload.note, now),
+        )
+        detection = f"农残快检{conclusion}"
+        if payload.lab:
+            detection += f"（{payload.lab} · {tested_at}）"
+        conn.execute("UPDATE batches SET detection_report=? WHERE id=?", (detection, batch["id"]))
+
+        blocked_now = conclusion == "不合格" and batch["status"] == "released"
+        if blocked_now:
+            conn.execute(
+                "UPDATE batches SET status='blocked', block_reason=? WHERE id=?",
+                ("农残检测不合格，禁止销售", batch["id"]),
+            )
+
+        append_hash(conn, batch["id"],
+                    {"batch_no": batch_no, "stage": "检测", "conclusion": conclusion,
+                     "lab": payload.lab, "tested_at": tested_at},
+                    f"农残快检·{conclusion}")
+
+        row = conn.execute("SELECT status, block_reason FROM batches WHERE id=?",
+                           (batch["id"],)).fetchone()
+        return {
+            "id": cur.lastrowid,
+            "batch_no": batch_no,
+            "conclusion": conclusion,
+            "detection_report": detection,
+            "status": row["status"],
+            "block_reason": row["block_reason"],
+            "blocked": blocked_now,
+        }
+
+
+@app.get("/api/batches/{batch_no}/residue-tests")
+def list_residue_tests(batch_no: str):
+    with get_conn() as conn:
+        batch = _batch_or_404(conn, batch_no)
+        return _residue_rows(conn, batch["id"])
+
+
+@app.post("/api/uploads")
+async def upload_file(file: UploadFile = File(...)):
+    """通用图片上传：农残报告、成熟度佐证等复用。"""
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "图片为空")
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
+        raise HTTPException(400, "仅支持 JPG / PNG / WEBP 图片")
+    url, path = ai_service.save_image(data, suffix)
+    return {"url": url, "path": path}
 
 
 @app.get("/api/batches/{batch_no}/qrcode")
@@ -645,6 +980,7 @@ def get_trace(code: str):
         hashes = rows_to_dicts(conn.execute(
             "SELECT record_hash, prev_hash, payload_summary, created_at FROM trace_hash_log "
             "WHERE batch_id=? ORDER BY id", (batch["id"],)).fetchall())
+        residue_tests = _residue_rows(conn, batch["id"])
 
         last_p = dict(last_pesticide) if last_pesticide else None
         safety_state = "未知"
@@ -678,6 +1014,9 @@ def get_trace(code: str):
                 "detection_report": batch["detection_report"],
                 "packaging": batch["packaging_info"],
                 "logistics": batch["logistics"],
+                "cold_chain": _cold_chain_for(batch),
+                "residue_tests": residue_tests,
+                "residue_conclusion": _residue_conclusion(residue_tests),
             },
             "hash_chain": hashes,
             "chain_verify": verify_chain(conn, batch_id=batch["id"]),
@@ -736,6 +1075,39 @@ def todos():
                     "action": "查看批次",
                 })
 
+            # 采收窗口：临近 / 最佳 / 刚过期（超过 14 天的过期不提醒，避免陈年噪音）
+            window = _maturity_for(p)
+            if window["status"] == "临近":
+                items.append({
+                    "level": "warning",
+                    "type": "harvest",
+                    "plot_id": p["id"],
+                    "variety": p["variety"],
+                    "title": f"{p['name']} {p['variety']} {window['days_to_start']} 天后进入最佳采收期",
+                    "detail": window["label"],
+                    "action": "查看采收窗口",
+                })
+            elif window["status"] == "最佳":
+                items.append({
+                    "level": "warning",
+                    "type": "harvest",
+                    "plot_id": p["id"],
+                    "variety": p["variety"],
+                    "title": f"{p['name']} {p['variety']} 正处于最佳采收期（剩余 {window['days_remaining']} 天）",
+                    "detail": window["label"],
+                    "action": "查看采收窗口",
+                })
+            elif window["status"] == "已过" and window["days_overdue"] <= maturity.STALE_DAYS:
+                items.append({
+                    "level": "serious",
+                    "type": "harvest",
+                    "plot_id": p["id"],
+                    "variety": p["variety"],
+                    "title": f"{p['name']} {p['variety']} 已过最佳采收期 {window['days_overdue']} 天",
+                    "detail": "建议尽快采收或转入加工，避免果品品质下降",
+                    "action": "查看采收窗口",
+                })
+
         recent = conn.execute(
             "SELECT detected_class, COUNT(*) AS c FROM recognitions "
             "WHERE created_at >= ? AND detected_class NOT IN ('健康叶片','健康果实') "
@@ -769,6 +1141,64 @@ def todos():
                 "action": "雨前预防",
             })
 
+        # 采后：离树 24 小时未预冷 / 24 小时~7 天无农残检测
+        released = rows_to_dicts(conn.execute(
+            "SELECT b.*, p.name AS plot_name FROM batches b JOIN plots p ON p.id=b.plot_id "
+            "WHERE b.status='released' ORDER BY b.harvest_date DESC").fetchall())
+        for b in released:
+            chain = _cold_chain_for(b)
+            hours = chain.get("hours_since_harvest")
+            if hours is None:
+                continue
+            if chain["status"] == "overdue":
+                items.append({
+                    "level": "critical",
+                    "type": "coldchain",
+                    "plot_id": b["plot_id"],
+                    "batch_no": b["batch_no"],
+                    "hours_since_harvest": hours,
+                    "title": f"{b['batch_no']} 离树 {hours:.0f} 小时仍未预冷",
+                    "detail": chain["message"],
+                    "action": "记录预冷",
+                })
+            if 24 <= hours <= 24 * 7:
+                tested = conn.execute(
+                    "SELECT COUNT(*) c FROM residue_tests WHERE batch_id=?", (b["id"],)).fetchone()["c"]
+                if not tested:
+                    items.append({
+                        "level": "warning",
+                        "type": "residue",
+                        "plot_id": b["plot_id"],
+                        "batch_no": b["batch_no"],
+                        "title": f"{b['batch_no']} 尚无农残快检记录",
+                        "detail": "离树已超过 24 小时，建议尽快送检或录入检测结果",
+                        "action": "录入检测",
+                    })
+
+        # 裂果：久旱转雨 + 敏感品种（冷缓存直接返回 None，不阻塞接口）
+        try:
+            days = weather.get_extended_days(non_blocking=True)
+        except Exception:
+            days = None
+        if days:
+            crack_items = []
+            for p in plots:
+                found = crack.evaluate_crack_risk(
+                    days, p.get("variety") or "",
+                    phenology=maturity.phenology(p.get("variety") or ""))
+                if not found:
+                    continue
+                crack_items.append({
+                    "level": "serious" if found["level"] == "high" else "warning",
+                    "type": "crack",
+                    "plot_id": p["id"],
+                    "variety": p["variety"],
+                    "title": f"{p['name']} {p['variety']} 裂果风险高",
+                    "detail": found["detail"],
+                    "action": "查看地块",
+                })
+            items.extend(crack_items[:2])
+
         if not items:
             items.append({"level": "good", "title": "今日暂无待办", "detail": "果园状态正常", "action": ""})
         return items
@@ -795,11 +1225,32 @@ def dashboard_summary():
         released = conn.execute("SELECT COUNT(*) c FROM batches WHERE status='released'").fetchone()["c"]
 
         unsafe_plots = []
+        harvest_ready = []
         for p in conn.execute("SELECT * FROM plots").fetchall():
             s = check_safety(conn, p["id"], _today())
             if not s["safe"]:
                 unsafe_plots.append({"plot": p["name"], "message": s["message"],
                                      "remaining_days": s["remaining_days"]})
+            w = _maturity_for(dict(p))
+            if w["status"] in ("临近", "最佳"):
+                harvest_ready.append({"plot": p["name"], "variety": p["variety"],
+                                      "status": w["status"], "label": w["label"],
+                                      "days_to_start": w["days_to_start"],
+                                      "days_remaining": w["days_remaining"]})
+
+        coldchain_overdue = 0
+        for b in conn.execute("SELECT * FROM batches WHERE status='released'").fetchall():
+            if _cold_chain_for(dict(b))["status"] == "overdue":
+                coldchain_overdue += 1
+
+        residue_unqualified = 0
+        for row in conn.execute(
+            "SELECT t.batch_id, t.conclusion FROM residue_tests t "
+            "JOIN batches b ON b.id=t.batch_id "
+            "WHERE t.id IN (SELECT MAX(id) FROM residue_tests GROUP BY batch_id)"
+        ).fetchall():
+            if row["conclusion"] == "不合格":
+                residue_unqualified += 1
 
         yield_2026 = conn.execute(
             "SELECT SUM(actual_yield) y FROM yield_records WHERE season=2026").fetchone()["y"] or 0
@@ -811,6 +1262,9 @@ def dashboard_summary():
             "recognition_handled_7d": handled_7d,
             "recognition_disposal_rate": round(handled_7d / recognitions_7d, 4) if recognitions_7d else 0.0,
             "blocked_batches": blocked, "released_batches": released,
+            "coldchain_overdue": coldchain_overdue,
+            "residue_unqualified": residue_unqualified,
+            "harvest_ready": harvest_ready,
             "yield_2026_kg": round(yield_2026, 0),
             "unsafe_plots": unsafe_plots,
         }

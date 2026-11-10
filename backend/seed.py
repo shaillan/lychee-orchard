@@ -156,3 +156,80 @@ def _seed(conn) -> None:
             append_hash(conn, batch_id,
                         {"batch_no": batch_no, "stage": "销售", "report": "农残快检合格"},
                         "销售检测摘要")
+
+
+EXTRAS_KEY = "demo_extras_v1"
+
+
+def seed_extras_if_missing() -> bool:
+    """给旧库一次性补齐演示用的冷链与农残数据，只填空值、不覆盖用户录入。"""
+    with get_conn() as conn:
+        if conn.execute("SELECT value FROM settings WHERE key=?", (EXTRAS_KEY,)).fetchone():
+            return False
+
+        extras = {
+            "LZ-P03-20260702-0001": {
+                "timestamps": {
+                    "harvest_at": "2026-07-02 05:30:00",
+                    "precooled_at": "2026-07-02 08:10:00",
+                    "shipped_at": "2026-07-02 14:00:00",
+                },
+                "test": {
+                    "tested_at": "2026-07-02",
+                    "lab": "从化区农产品质量安全检测站",
+                    "conclusion": "合格",
+                    "items": [
+                        {"name": "毒死蜱", "value": "0.008", "unit": "mg/kg", "limit": "0.01", "passed": True},
+                        {"name": "氯氰菊酯", "value": "0.021", "unit": "mg/kg", "limit": "0.5", "passed": True},
+                    ],
+                    "operator": "陈伯",
+                    "note": "演示数据",
+                },
+            },
+            "LZ-P01-20260708-0002": {
+                "timestamps": {},
+                "test": {
+                    "tested_at": "2026-07-08",
+                    "lab": "从化区农产品质量安全检测站",
+                    "conclusion": "不合格",
+                    "items": [
+                        {"name": "高效氯氟氰菊酯", "value": "0.32", "unit": "mg/kg", "limit": "0.2", "passed": False},
+                    ],
+                    "operator": "陈伯",
+                    "note": "演示数据：与安全间隔期拦截形成双重拦截",
+                },
+            },
+        }
+
+        now = datetime.now().isoformat(timespec="seconds")
+        for batch_no, data in extras.items():
+            row = conn.execute("SELECT id FROM batches WHERE batch_no=?", (batch_no,)).fetchone()
+            if not row:
+                continue
+            for column, value in data["timestamps"].items():
+                conn.execute(
+                    f"UPDATE batches SET {column}=? WHERE id=? AND ({column} IS NULL OR {column}='')",
+                    (value, row["id"]))
+            has_test = conn.execute(
+                "SELECT 1 FROM residue_tests WHERE batch_id=? LIMIT 1", (row["id"],)).fetchone()
+            if has_test:
+                continue
+            test = data["test"]
+            conn.execute(
+                "INSERT INTO residue_tests(batch_id, tested_at, lab, conclusion, items_json, report_url, "
+                "operator, note, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                (row["id"], test["tested_at"], test["lab"], test["conclusion"],
+                 json.dumps(test["items"], ensure_ascii=False), None,
+                 test["operator"], test["note"], now),
+            )
+            label = "合格" if test["conclusion"] == "合格" else "不合格"
+            conn.execute(
+                "UPDATE batches SET detection_report=? WHERE id=?",
+                (f"农残快检{label}（{test['lab']} · {test['tested_at']}）", row["id"]),
+            )
+
+        conn.execute(
+            "INSERT OR REPLACE INTO settings(key, value, updated_at) VALUES(?,?,?)",
+            (EXTRAS_KEY, json.dumps({"seeded_at": now}, ensure_ascii=False), now),
+        )
+        return True

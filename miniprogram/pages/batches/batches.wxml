@@ -50,6 +50,71 @@
         <view class="al-title">未生成销售溯源码</view>
         <view class="al-detail">{{item.block_reason}}</view>
       </view>
+
+      <view class="kv mt">
+        <text class="k">采后冷链</text>
+        <text class="v">离树 {{item.coldHours}} 小时 · <text class="pill {{item.coldClass}}">{{item.coldText}}</text></text>
+      </view>
+      <view class="kv">
+        <text class="k">农残快检</text>
+        <text class="v"><text class="pill {{item.residueClass}}">{{item.residueText}}</text></text>
+      </view>
+
+      <view class="row mt">
+        <view
+          wx:if="{{item.status === 'released' && item.nextEvent}}"
+          class="btn ghost small"
+          hover-class="btn-tap"
+          bindtap="coldEvent"
+          data-batch="{{item.batch_no}}"
+          data-event="{{item.nextEvent}}"
+        >{{item.nextLabel}}</view>
+        <view
+          class="btn ghost small"
+          hover-class="btn-tap"
+          bindtap="openResidue"
+          data-batch="{{item.batch_no}}"
+        >{{residueFor === item.batch_no ? '收起录入' : '录入检测'}}</view>
+      </view>
+
+      <view wx:if="{{residueFor === item.batch_no}}" class="residue-form mt">
+        <view class="field">
+          <text class="label">检测机构</text>
+          <input value="{{resLab}}" bindinput="onResLabInput" placeholder="如 从化区农产品检测站" />
+        </view>
+        <view class="field">
+          <text class="label">检测日期</text>
+          <picker mode="date" value="{{resTested}}" bindchange="onResTestedChange">
+            <view class="picker-value"><text>{{resTested}}</text></view>
+          </picker>
+        </view>
+        <view class="field">
+          <text class="label">结论</text>
+          <picker mode="selector" range="{{conclusions}}" value="{{resConclusionIndex}}" bindchange="onResConclusionChange">
+            <view class="picker-value">
+              <text>{{conclusions[resConclusionIndex]}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+        <view class="row">
+          <view class="field half">
+            <text class="label">检测项</text>
+            <input value="{{resItemName}}" bindinput="onResItemName" placeholder="如 毒死蜱" />
+          </view>
+          <view class="field half">
+            <text class="label">实测值</text>
+            <input value="{{resItemValue}}" bindinput="onResItemValue" placeholder="如 0.008" />
+          </view>
+        </view>
+        <view class="field">
+          <text class="label">限量（mg/kg）</text>
+          <input value="{{resItemLimit}}" bindinput="onResItemLimit" placeholder="如 0.01" />
+        </view>
+        <view class="btn ghost small" bindtap="chooseReport">{{resUploading ? '上传中…' : (resReportUrl ? '已上传报告，重新选择' : '上传检测报告照片（可选）')}}</view>
+        <view class="btn block mt" bindtap="submitResidue">{{resSubmitting ? '提交中…' : '提交检测记录'}}</view>
+        <view wx:if="{{resMsg}}" class="alert warning mt"><view class="al-detail">{{resMsg}}</view></view>
+      </view>
     </view>
   </block>
 </view>

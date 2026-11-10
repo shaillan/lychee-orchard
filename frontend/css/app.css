@@ -156,6 +156,7 @@ button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .trace-seg { margin-bottom: 14px; }
 .trace-seg .seg-head { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; margin-bottom: 8px; }
 .trace-seg .seg-head .n { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+.trace-seg .seg-sub { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px; padding-top: 10px; border-top: 1px dashed var(--gridline); font-weight: 650; font-size: 13.5px; }
 .kv { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed var(--gridline); font-size: 13.5px; }
 .kv:last-child { border-bottom: none; }
 .kv .k { color: var(--text-secondary); }

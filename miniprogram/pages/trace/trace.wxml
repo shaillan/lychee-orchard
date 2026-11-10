@@ -62,6 +62,28 @@
       <view class="kv"><text class="k">农残检测</text><text class="v">{{trace.sales.detection_report}}</text></view>
       <view class="kv"><text class="k">包装</text><text class="v">{{trace.sales.packaging}}</text></view>
       <view class="kv"><text class="k">物流</text><text class="v">{{trace.sales.logistics || '—'}}</text></view>
+
+      <view class="seg-sub">采后冷链</view>
+      <view class="kv">
+        <text class="k">状态</text>
+        <text class="v"><text class="pill {{trace.cold.statusClass}}">{{trace.cold.statusText}}</text></text>
+      </view>
+      <view class="kv"><text class="k">离树</text><text class="v">{{trace.cold.harvest_at || '未记录'}}{{trace.cold.harvest_at_estimated ? '（估算）' : ''}}</text></view>
+      <view class="kv"><text class="k">离树时长</text><text class="v">{{trace.cold.hours}} 小时</text></view>
+      <view class="kv"><text class="k">预冷完成</text><text class="v">{{trace.cold.precooled_at || '未记录'}}</text></view>
+      <view class="kv"><text class="k">装车发运</text><text class="v">{{trace.cold.shipped_at || '未记录'}}</text></view>
+      <view class="kv"><text class="k">到货</text><text class="v">{{trace.cold.arrived_at || '未记录'}}</text></view>
+
+      <view class="seg-sub">农残快检 <text class="pill {{trace.residueClass}}">{{trace.residueConclusion}}</text></view>
+      <view wx:if="{{!trace.residueTests.length}}" class="small muted">暂无检测记录</view>
+      <view wx:for="{{trace.residueTests}}" wx:key="id" class="residue-item">
+        <view class="residue-head">
+          <text>{{item.lab || '检测机构未填'}} · {{item.tested_at}}</text>
+          <text class="pill {{item.conclusionClass}}">{{item.conclusion}}</text>
+        </view>
+        <view wx:if="{{item.itemText}}" class="small muted">{{item.itemText}}</view>
+        <view wx:if="{{item.note}}" class="small muted">{{item.note}}</view>
+      </view>
     </view>
 
     <view wx:if="{{trace.hash_chain.length}}" class="card seg">

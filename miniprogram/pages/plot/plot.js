@@ -2,7 +2,7 @@ const api = require('../../utils/api');
 const font = require('../../utils/font');
 
 Page({
-  data: { plot: null, yields: [], loading: true, error: '', fontClass: '' },
+  data: { plot: null, yields: [], maturity: null, lastCheck: null, loading: true, error: '', fontClass: '' },
 
   onLoad(options) {
     this.setData({ fontClass: font.fontClass() });
@@ -44,9 +44,29 @@ Page({
             estH: estimated ? Math.max(4, Math.round((estimated / max) * 100)) : 0
           };
         });
+        const m = p.maturity || {};
+        let lastCheck = null;
+        (p.operations || []).some(o => {
+          if (o.operation_type !== '成熟度观察') return false;
+          let detail = {};
+          try { detail = JSON.parse(o.detail || '{}') || {}; } catch (e) { detail = {}; }
+          lastCheck = {
+            ripeness: detail.ripeness,
+            note: detail.note || '',
+            image_url: detail.image_url || '',
+            date: o.operation_date || '',
+            operator: o.operator || ''
+          };
+          return true;
+        });
         this.setData({
           plot: Object.assign({}, p, { safe: !!(p.safety && p.safety.safe) }),
           yields: yields,
+          maturity: Object.assign({}, m, {
+            statusClass: m.status === '最佳' ? 'good'
+              : (m.status === '已过' ? 'critical' : (m.status === '临近' ? 'warning' : 'neutral'))
+          }),
+          lastCheck: lastCheck,
           loading: false
         });
       })
