@@ -28,9 +28,12 @@
       <view class="hero-chips">
         <view class="hero-chip">风险 {{pest.risk}}</view>
         <view wx:if="{{pest.peakText}}" class="hero-chip">高发 {{pest.peakText}}</view>
+        <view wx:if="{{pest.peakNow}}" class="hero-chip kb-peak-chip">本月高发</view>
         <view class="hero-chip">✓ 已收录</view>
       </view>
     </view>
+
+    <view wx:if="{{offline}}" class="kb-offline-banner">当前离线，显示本地缓存内容</view>
 
     <view class="card">
       <view class="card-head">
@@ -76,7 +79,15 @@
       <text class="sec-count">{{pesticides.length}} 种</text>
     </view>
 
-    <view wx:if="{{!pesticides.length}}" class="card">
+    <view wx:if="{{drugsUnknown}}" class="card">
+      <view class="empty">
+        <text class="empty-icon">📶</text>
+        <text class="empty-title">离线状态，药剂清单暂不可用</text>
+        <text class="empty-sub">联网后重新打开即可查看；非化学措施可正常参考</text>
+      </view>
+    </view>
+
+    <view wx:elif="{{!pesticides.length}}" class="card">
       <view class="empty">
         <text class="empty-icon">🧪</text>
         <text class="empty-title">暂无登记药剂</text>

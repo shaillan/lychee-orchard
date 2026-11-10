@@ -23,6 +23,55 @@
 }
 .kb-filter-tap { opacity: 0.75; }
 
+.kb-offline {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #8A6A1F;
+}
+
+/* ---- 本月高发提示 -------------------------------------------------------- */
+.kb-peak {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 26rpx;
+  margin-bottom: 18rpx;
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(250, 178, 25, 0.35);
+  background: linear-gradient(135deg, #FFF8E6 0%, #FFFDF5 100%);
+}
+.kb-peak-tap { opacity: 0.85; }
+.kb-peak-main { flex: 1; min-width: 0; }
+.kb-peak-title {
+  font-size: 27rpx;
+  font-weight: 700;
+  color: #8A5A00;
+}
+.kb-peak-sub {
+  margin-top: 4rpx;
+  font-size: 23rpx;
+  line-height: 1.6;
+  color: #9A7A33;
+  overflow-wrap: break-word;
+}
+.kb-peak-go {
+  flex: none;
+  margin-left: 12rpx;
+  font-size: 24rpx;
+  color: #B07A12;
+}
+
+.kb-quiet {
+  margin-bottom: 18rpx;
+  padding: 18rpx 24rpx;
+  border-radius: 20rpx;
+  background: #F4F8F4;
+  font-size: 23rpx;
+  line-height: 1.6;
+  color: #65766B;
+  color: var(--muted);
+}
+
 /* ---- 条目卡片 ------------------------------------------------------------ */
 .kb-card {
   display: flex;
@@ -99,3 +148,8 @@
 .font-lg .kb-symptom { font-size: 29rpx; }
 .font-lg .kb-meta { font-size: 27rpx; }
 .font-lg .tip { font-size: 27rpx; }
+.font-lg .kb-peak-title { font-size: 32rpx; }
+.font-lg .kb-peak-sub { font-size: 28rpx; }
+.font-lg .kb-peak-go { font-size: 28rpx; }
+.font-lg .kb-offline { font-size: 26rpx; }
+.font-lg .kb-quiet { font-size: 27rpx; }

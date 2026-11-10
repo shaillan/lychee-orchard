@@ -104,6 +104,31 @@ class KnowledgeBaseTest(unittest.TestCase):
         self.assertIn("清晨低温时人工捕杀成虫", insect["action_reason"])
         self.assertIn("虫口基数", insect["action_reason"])
 
+    def test_new_entries_registered(self):
+        # 2026-11 扩充：6 个广东常见病虫，合计 18 个病虫害类别
+        names = ["荔枝酸腐病", "荔枝龟背天牛", "荔枝吸果夜蛾", "荔枝蚜虫", "荔枝蓟马", "荔枝金龟子"]
+        for name in names:
+            self.assertIn(name, PESTS)
+            self.assertIn(name, PEST_CLASSES)
+        kinds = {name: PESTS[name]["kind"] for name in names}
+        self.assertEqual(kinds["荔枝酸腐病"], "病害")
+        self.assertEqual({kinds[n] for n in names if n != "荔枝酸腐病"}, {"虫害"})
+        self.assertEqual(len(PEST_CLASSES), 18)
+
+    def test_new_entries_have_drugs_or_explicit_no_drug(self):
+        # 蚜虫/蓟马/金龟子有可轮换药剂；天牛/吸果夜蛾/酸腐病以非化学措施为主
+        for name in ("荔枝蚜虫", "荔枝蓟马", "荔枝金龟子"):
+            s = build_suggestion(name, 0.9)
+            self.assertTrue(s["pesticides"], name)
+            for p in s["pesticides"]:
+                self.assertGreater(p["safe_interval_days"], 0)
+
+        for name in ("荔枝龟背天牛", "荔枝酸腐病"):
+            s = build_suggestion(name, 0.9)
+            self.assertEqual(s["pesticides"], [], name)
+            self.assertEqual(s["recommended_action"], "operation", name)
+            self.assertIn("物理/农业防治", s["action_reason"], name)
+
     def test_alias_normalization(self):
         cases = {
             "荔蝽": "荔枝蝽",

@@ -2,7 +2,7 @@
   <view class="card kb-entry" bindtap="openKb">
     <view class="kb-entry-main">
       <view class="h2" style="margin:0">📚 病虫害知识库</view>
-      <view class="small muted">12 种常见病虫害 · 症状、鉴别与防治要点</view>
+      <view class="small muted">18 种常见病虫害 · 症状、鉴别与防治要点</view>
     </view>
     <text class="picker-arrow">›</text>
   </view>
