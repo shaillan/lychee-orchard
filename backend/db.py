@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS farm_operations (
     operation_date TEXT NOT NULL,
     detail         TEXT,
     images         TEXT,
+    voided_at      TEXT,                              -- 作废时间（记录不可改删，只能作废重录）
+    void_reason    TEXT,
+    voided_by      TEXT,
     created_at     TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_op_plot_date ON farm_operations(plot_id, operation_date);
@@ -52,6 +55,9 @@ CREATE TABLE IF NOT EXISTS pesticide_records (
     safe_interval_days  INTEGER NOT NULL,
     target_pest         TEXT,
     days_to_harvest     INTEGER,
+    voided_at           TEXT,                         -- 作废时间；作废记录不再参与安全间隔期与合规统计
+    void_reason         TEXT,
+    voided_by           TEXT,
     created_at          TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_pest_plot_time ON pesticide_records(plot_id, apply_time);
@@ -83,6 +89,7 @@ CREATE TABLE IF NOT EXISTS recognitions (
     pesticide_record_id INTEGER,                       -- 用药处置回链 pesticide_records.id
     operation_id    INTEGER,                           -- 农事处置回链 farm_operations.id
     patrol_id       TEXT,                              -- 同一次「进园巡拍」共享的批次号
+    actual_class    TEXT,                              -- 人工纠错后的真实类别（回流为评测/训练数据）
     created_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_rec_created ON recognitions(created_at);
@@ -188,6 +195,17 @@ def _migrate(conn) -> None:
     if "patrol_id" not in rec_columns:
         conn.execute("ALTER TABLE recognitions ADD COLUMN patrol_id TEXT")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_rec_patrol ON recognitions(patrol_id)")
+
+    # 识别纠错回流：记录人工判定的真实类别
+    if "actual_class" not in rec_columns:
+        conn.execute("ALTER TABLE recognitions ADD COLUMN actual_class TEXT")
+
+    # 台账留痕：农事/用药记录只作废、不修改，作废字段用于审计
+    for table in ("farm_operations", "pesticide_records"):
+        columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for column in ("voided_at", "void_reason", "voided_by"):
+            if column not in columns:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} TEXT")
 
     # 采后冷链：旧库补四个时间戳
     batch_columns = {row["name"] for row in conn.execute("PRAGMA table_info(batches)")}

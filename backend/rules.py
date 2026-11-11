@@ -175,7 +175,7 @@ PESTS: dict[str, dict] = {
         "symptoms": "嫩叶背面出现黄褐色毛毡状绒毛，叶片卷曲畸形，影响新梢生长。",
         "timing": "新梢抽发期是防治关键，重点喷施叶背。",
         "notes": "瘿螨体型极小，需用杀螨剂并保证叶背着药；剪除严重受害枝梢。",
-        "aliases": ["瘿螨", "荔枝毛毡病", "荔枝叶瘿螨", "litchi erinose mite"],
+        "aliases": ["瘿螨", "毛毡病", "荔枝毛毡病", "荔枝叶瘿螨", "litchi erinose mite"],
         "host_parts": ["嫩叶", "叶背", "新梢", "花穗"],
         "differential": {
             "confusable": ["荔枝尺蠖", "荔枝炭疽病"],

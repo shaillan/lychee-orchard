@@ -114,6 +114,7 @@ Page({
     pests: [], pestNames: [], pestIndex: 0,
     days: '', preview: '', loading: false, handling: false, error: '', result: null,
     patrol: null, patrolProgress: '',
+    correcting: false, correctOptions: [], correctIndex: 0,
     history: []
   },
 
@@ -162,11 +163,14 @@ Page({
       .then(res => {
         const plots = res[0] || [];
         const pests = res[1] || [];
+        const pestNames = pests.map(p => p.name);
         this.setData({
           plots: plots,
           plotNames: plots.map(p => p.name + '（' + p.variety + '）'),
           pests: pests,
-          pestNames: pests.map(p => p.name)
+          pestNames: pestNames,
+          // 纠错选项：第 0 项表示只标记误判、不提供正确类别
+          correctOptions: ['不确定（仅标记误判）'].concat(pestNames)
         });
       })
       .catch(err => this.setData({ error: err.message }));
@@ -328,6 +332,14 @@ Page({
     const r = this.data.result;
     if (!r || this.data.handling) return;
     const method = e.currentTarget.dataset.method;
+    // 误判先展开纠错面板：选了实际类别才形成可回流的纠错样本
+    if (method === 'false_positive') {
+      const options = (this.data.correctOptions || []).length
+        ? this.data.correctOptions
+        : ['不确定（仅标记误判）', '无法判断'];
+      this.setData({ correcting: true, correctIndex: 0, correctOptions: options });
+      return;
+    }
     const body = { method };
     if (method === 'pesticide') {
       const p = (r.suggestion && r.suggestion.pesticides || [])[0];
@@ -341,14 +353,35 @@ Page({
     } else if (method === 'operation') {
       body.operation_type = '人工清除';
       body.detail = { method: '人工清除', detected_class: r.pest_class };
-    } else if (method === 'false_positive') {
-      body.note = '人工判定为误判';
     } else {
       body.note = '暂不处理';
     }
+    this.submitHandle(body);
+  },
 
+  onCorrectChange(e) {
+    this.setData({ correctIndex: Number(e.detail.value) });
+  },
+
+  cancelCorrect() {
+    this.setData({ correcting: false });
+  },
+
+  submitCorrect() {
+    const r = this.data.result;
+    if (!r || this.data.handling) return;
+    const idx = Number(this.data.correctIndex) || 0;
+    const body = { method: 'false_positive', note: '人工判定为误判' };
+    // idx=0 只标记误判；其余把人工判定的真实类别一并回传
+    if (idx > 0) body.actual_class = this.data.correctOptions[idx];
+    this.submitHandle(body);
+  },
+
+  submitHandle(body) {
+    const r = this.data.result;
+    if (!r || this.data.handling) return;
     this.setData({ handling: true });
-    wx.showLoading({ title: '提交处置' });
+    wx.showLoading({ title: body.method === 'false_positive' ? '提交纠错' : '提交处置' });
     api.request('/api/recognitions/' + r.id + '/handle', 'POST', body)
       .then(res => {
         wx.hideLoading();
@@ -358,12 +391,15 @@ Page({
             ' 天，' + res.summary.earliest_harvest_date + ' 之后方可采收';
         } else if (res.summary && res.summary.operation_type) {
           tip = res.summary.operation_type + ' · ' + res.summary.operation_date;
+        } else if (res.actual_class) {
+          tip = '已记录纠错：' + (res.detected_class || r.pest_class) + ' → ' + res.actual_class;
         }
         this.setData({
           handling: false,
+          correcting: false,
           result: Object.assign({}, r, { status: res.status, pending: false, handleTip: tip })
         });
-        wx.showToast({ title: '已处置', icon: 'success' });
+        wx.showToast({ title: body.method === 'false_positive' ? '已记录' : '已处置', icon: 'success' });
         this.loadHistory();
       })
       .catch(err => {

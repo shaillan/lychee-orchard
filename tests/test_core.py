@@ -24,11 +24,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backend.ai_service import (  # noqa: E402
     CONFIRM_SYSTEM_PROMPT,
+    _apply_evidence_check,
     _image_url,
     _normalize_class,
     _normalize_confidence,
+    _parse_confirm_content,
+    _parse_vlm_content,
     _remote_recognize,
     _verify_prediction,
+    _vision_chat,
 )
 from backend.rules import (  # noqa: E402
     PEST_CLASSES,
@@ -254,7 +258,7 @@ class VisionProviderTest(unittest.TestCase):
             '"class":"荔枝蒂蛀虫","confidence":0.91}'
         )}}]}
         with mock.patch("httpx.post", return_value=fake) as post:
-            pest_class, confidence, model_used = _remote_recognize(b"\xff\xd8jpeg")
+            pest_class, confidence, model_used, _ = _remote_recognize(b"\xff\xd8jpeg")
 
         self.assertEqual(pest_class, "荔枝蒂蛀虫")
         self.assertAlmostEqual(confidence, 0.91)
@@ -282,9 +286,97 @@ class VisionProviderTest(unittest.TestCase):
             fake = mock.Mock()
             fake.json.return_value = {"choices": [{"message": {"content": content}}]}
             with mock.patch("httpx.post", return_value=fake):
-                pest_class, confidence, _ = _remote_recognize(b"\xff\xd8jpeg")
+                pest_class, confidence, _, _ = _remote_recognize(b"\xff\xd8jpeg")
             self.assertEqual(pest_class, "无法判断", content)
             self.assertLessEqual(confidence, 0.3)
+
+    def test_insect_evidence_accepts_body_without_disease_spots(self):
+        """虫害照片写「无病斑」是正常的，不能因此误杀正确的虫体识别。"""
+        pest_class, confidence = _apply_evidence_check(
+            "荔枝龟背天牛", 0.9, "叶片上有橙黑相间带斑纹的甲虫，无病斑、霉层等异常")
+        self.assertEqual(pest_class, "荔枝龟背天牛")
+        self.assertAlmostEqual(confidence, 0.9)
+
+    def test_insect_evidence_rejects_absent_body(self):
+        pest_class, confidence = _apply_evidence_check(
+            "荔枝龟背天牛", 0.9, "枝干表面未见虫体，也无蛀孔")
+        self.assertEqual(pest_class, "无法判断")
+        self.assertLessEqual(confidence, 0.3)
+
+    def test_sooty_mold_evidence_is_accepted(self):
+        """煤烟病的证据是「黑色煤污层」，旧关键词只认「黑点/病斑」，会误杀。"""
+        pest_class, confidence = _apply_evidence_check(
+            "荔枝煤烟病", 0.85, "叶片表面覆盖一层黑色煤污状霉层，多分布在叶背")
+        self.assertEqual(pest_class, "荔枝煤烟病")
+        self.assertAlmostEqual(confidence, 0.85)
+
+    def test_mite_damage_evidence_is_accepted(self):
+        """瘿螨只拍得到为害状（畸形/卷曲），不能因为没有虫体就否掉。"""
+        pest_class, confidence = _apply_evidence_check(
+            "荔枝瘿螨", 0.8, "叶背出现毛毡状隆起，叶片皱缩卷曲")
+        self.assertEqual(pest_class, "荔枝瘿螨")
+
+    def test_healthy_rejects_when_insects_described(self):
+        """模型一边说「健康叶片」一边描述介壳虫，是自相矛盾的结论。"""
+        pest_class, confidence = _apply_evidence_check(
+            "健康叶片", 1.0, "叶背附着少量白色介壳虫，叶面整体平整")
+        self.assertEqual(pest_class, "无法判断")
+        self.assertLessEqual(confidence, 0.3)
+
+    def test_checklist_fields_build_evidence(self):
+        """逐项检查全为「无」时，应补出「未见异常」，否则健康结论会被闸门误杀。"""
+        content = json.dumps({
+            "shape": "无", "color": "无", "surface": "无", "insects": "无",
+            "class": "健康叶片", "confidence": 1,
+        }, ensure_ascii=False)
+        pest_class, confidence, evidence = _parse_vlm_content(content)
+        self.assertEqual(pest_class, "健康叶片")
+        self.assertIn("未见异常", evidence)
+        self.assertEqual(_apply_evidence_check(pest_class, confidence, evidence)[0], "健康叶片")
+
+    def test_numeric_key_schema_is_accepted(self):
+        """模型有时改用 "1"~"6" 当键，不能因此把整张图判成无法判断。"""
+        content = json.dumps({
+            "1": "有卷曲", "2": "有褐色斑点、褪绿",
+            "3": "无霉层、无白粉", "4": "无",
+            "5": "荔枝瘿螨", "6": 0.8,
+        }, ensure_ascii=False)
+        pest_class, confidence, evidence = _parse_vlm_content(content)
+        self.assertEqual(pest_class, "荔枝瘿螨")
+        self.assertAlmostEqual(confidence, 0.8)
+        self.assertIn("卷曲", evidence)
+
+    def test_checklist_insect_found_blocks_healthy(self):
+        """检查项里写了「有虫」，模型却仍填健康叶片，必须降级。"""
+        content = json.dumps({
+            "shape": "无", "color": "无", "surface": "无", "insects": "有,花簇处",
+            "class": "健康叶片", "confidence": 1,
+        }, ensure_ascii=False)
+        pest_class, confidence, evidence = _parse_vlm_content(content)
+        self.assertEqual(_apply_evidence_check(pest_class, confidence, evidence)[0], "无法判断")
+
+    def test_checklist_mite_damage_passes_insect_gate(self):
+        content = json.dumps({
+            "shape": "卷曲:有,畸形:有", "color": "异常发红:有", "surface": "无",
+            "insects": "无", "class": "荔枝瘿螨", "confidence": 0.8,
+        }, ensure_ascii=False)
+        pest_class, confidence, evidence = _parse_vlm_content(content)
+        self.assertEqual(_apply_evidence_check(pest_class, confidence, evidence)[0], "荔枝瘿螨")
+
+    def test_negation_scope_covers_enumerations(self):
+        """「无明显病斑、霉层」这一串都是否定，不能因为「霉层」离「无」远就当成病征。"""
+        pest_class, confidence = _apply_evidence_check(
+            "健康果实", 0.9, "果皮着色均匀，无明显病斑、霉层")
+        self.assertEqual(pest_class, "健康果实")
+        self.assertAlmostEqual(confidence, 0.9)
+
+    def test_healthy_requires_negative_evidence(self):
+        pest_class, _ = _apply_evidence_check("健康叶片", 0.9, "叶片平整，光照充足")
+        self.assertEqual(pest_class, "无法判断")
+        pest_class, confidence = _apply_evidence_check(
+            "健康叶片", 0.9, "叶片翠绿平整，无病斑、未见虫体")
+        self.assertEqual(pest_class, "健康叶片")
+        self.assertAlmostEqual(confidence, 0.9)
 
 
 class ConfirmVerificationTest(unittest.TestCase):
@@ -308,6 +400,16 @@ class ConfirmVerificationTest(unittest.TestCase):
         question = payload["messages"][1]["content"][1]["text"]
         self.assertIn("针尖状蛀孔", question)
         self.assertIn("荔枝炭疽病", question)
+
+    def test_confirm_prompt_carries_first_pass_evidence(self):
+        """复核要把首轮看到的异常带上，否则模型会重新瞎扫一遍、把正确结论否掉。"""
+        content = '{"observed":"叶背有毛毡状绒毛","present":true,"reason":"见绒毛"}'
+        with mock.patch("httpx.post", return_value=_vision_response(content)) as post:
+            _verify_prediction(b"\xff\xd8jpeg", "荔枝瘿螨", 0.8, "glm-x", True,
+                               "形态卷曲:有；虫体无")
+        question = post.call_args.kwargs["json"]["messages"][1]["content"][1]["text"]
+        self.assertIn("第一轮记录到的异常", question)
+        self.assertIn("形态卷曲", question)
 
     def test_confirm_false_downgrades(self):
         content = '{"observed":"果皮均匀，未见病斑","present":false,"reason":"未见典型症状"}'
@@ -372,7 +474,7 @@ class ConfirmVerificationTest(unittest.TestCase):
 
         with mock.patch.object(ai_service, "current_provider", return_value="api"), \
                 mock.patch.object(ai_service, "_remote_recognize",
-                                  return_value=("荔枝蒂蛀虫", 0.91, "glm-x")), \
+                                  return_value=("荔枝蒂蛀虫", 0.91, "glm-x", "果面有蛀孔")), \
                 mock.patch.object(ai_service, "_confirm_presence",
                                   return_value=(False, "未见蛀孔")):
             result = ai_service.recognize(b"\xff\xd8jpeg")
@@ -390,6 +492,94 @@ class ConfirmVerificationTest(unittest.TestCase):
         result = ai_service.recognize(b"mock-image-bytes")
         self.assertEqual(result["verification"]["status"], "skipped")
         self.assertEqual(result["verification"]["reason"], "mock")
+
+
+class VisionJsonParsingTest(unittest.TestCase):
+    """模型偶尔会输出两个 JSON 对象，贪婪正则会把它们拼在一起导致整张图降级。"""
+
+    def test_trailing_second_object_is_ignored(self):
+        content = (
+            '{"class":"荔枝蝽","confidence":0.9,"evidence":"叶片上有虫孔"}\n'
+            '{"class":"健康叶片","confidence":0.8,"evidence":"无异常"}'
+        )
+        pest_class, confidence, evidence = _parse_vlm_content(content)
+        self.assertEqual(pest_class, "荔枝蝽")
+        self.assertAlmostEqual(confidence, 0.9)
+        self.assertEqual(evidence, "叶片上有虫孔")
+
+    def test_markdown_fence(self):
+        content = '```json\n{"class":"荔枝炭疽病","confidence":"85%","evidence":"果面褐色病斑"}\n```'
+        pest_class, confidence, _ = _parse_vlm_content(content)
+        self.assertEqual(pest_class, "荔枝炭疽病")
+        self.assertAlmostEqual(confidence, 0.85)
+
+    def test_leading_explanation_with_braces(self):
+        content = '说明 {不是JSON} 正式结果：{"class":"健康果实","confidence":0.95}'
+        pest_class, confidence, _ = _parse_vlm_content(content)
+        self.assertEqual(pest_class, "健康果实")
+        self.assertAlmostEqual(confidence, 0.95)
+
+    def test_broken_index_and_field_keys_are_repaired(self):
+        """实测输出 `"1": "shape": "有 卷曲"` 不是合法 JSON，但不能整张图作废。"""
+        content = (
+            '{\n  "1": "shape": "有 卷曲",\n  "2": "color": "有 褐色斑点",\n'
+            '  "3": "surface": "无",\n  "4": "insects": "无",\n'
+            '  "5": "荔枝瘿螨",\n  "6": 0.8\n}'
+        )
+        pest_class, confidence, evidence = _parse_vlm_content(content)
+        self.assertEqual(pest_class, "荔枝瘿螨")
+        self.assertAlmostEqual(confidence, 0.8)
+        self.assertIn("形态有 卷曲", evidence)
+        self.assertIn("颜色有 褐色斑点", evidence)
+
+    def test_no_json_raises(self):
+        with self.assertRaises(ValueError):
+            _parse_vlm_content("我觉得是炭疽病")
+        with self.assertRaises(ValueError):
+            _parse_vlm_content("")
+
+    def test_confirm_trailing_object(self):
+        content = ('{"observed":"见蛀孔","present":true,"reason":"有虫粪"}\n'
+                   '{"observed":"duplicate","present":false,"reason":"x"}')
+        present, reason = _parse_confirm_content(content)
+        self.assertIs(present, True)
+        self.assertEqual(reason, "有虫粪")
+
+    def test_timeout_falls_back_to_next_model(self):
+        """主模型超时不能直接判整张图失败，要换备选模型再试。"""
+        from unittest import mock
+
+        import httpx
+
+        fake = mock.Mock()
+        fake.status_code = 200
+        fake.json.return_value = {"choices": [{"message": {
+            "content": '{"class":"健康叶片","confidence":0.9}'}}]}
+        with mock.patch("httpx.post",
+                        side_effect=[httpx.ReadTimeout("timeout"), fake]):
+            content, model = _vision_chat(
+                b"\xff\xd8jpeg", "sys", "user", models=["slow-model", "backup-model"])
+
+        self.assertEqual(model, "backup-model")
+        self.assertIn("健康叶片", content)
+
+    def test_non_json_gateway_response_falls_back(self):
+        from unittest import mock
+
+        bad = mock.Mock()
+        bad.status_code = 200
+        bad.json.side_effect = ValueError("not json")
+        bad.text = "<html>gateway error</html>"
+        good = mock.Mock()
+        good.status_code = 200
+        good.json.return_value = {"choices": [{"message": {
+            "content": '{"class":"健康果实","confidence":0.8}'}}]}
+        with mock.patch("httpx.post", side_effect=[bad, good]):
+            content, model = _vision_chat(
+                b"\xff\xd8jpeg", "sys", "user", models=["m1", "m2"])
+
+        self.assertEqual(model, "m2")
+        self.assertIn("健康果实", content)
 
 
 class WeatherTest(unittest.TestCase):
@@ -1207,6 +1397,167 @@ class PatrolTest(_ApiBase):
     def test_unknown_and_invalid_ids(self):
         self.assertEqual(self.client.get("/api/patrols/patrol-none-99").status_code, 404)
         self.assertEqual(self.client.get("/api/patrols/bad id!").status_code, 400)
+
+
+class CorrectionApiTest(_ApiBase):
+    """识别纠错回流：人工判定真实类别后，样本可导出用于评测/微调。"""
+
+    def _recognize(self, pest="荔枝蒂蛀虫", plot_id=2):
+        res = self.client.post("/api/recognitions/demo",
+                               json={"pest_class": pest, "plot_id": plot_id})
+        self.assertEqual(res.status_code, 200, res.text)
+        return res.json()["id"]
+
+    def test_actual_class_saved_and_exported(self):
+        rid = self._recognize()
+        res = self.client.post(f"/api/recognitions/{rid}/handle",
+                               json={"method": "false_positive", "actual_class": "荔枝蝽"})
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()["actual_class"], "荔枝蝽")
+        self.assertEqual(res.json()["detected_class"], "荔枝蒂蛀虫")
+
+        row = next(r for r in self.client.get("/api/recognitions?limit=300").json()
+                   if r["id"] == rid)
+        self.assertEqual(row["actual_class"], "荔枝蝽")
+
+        corrections = self.client.get("/api/recognitions/corrections?limit=2000").json()
+        self.assertIn(rid, {r["id"] for r in corrections["rows"]})
+
+        summary = self.client.get("/api/dashboard/summary").json()
+        self.assertGreaterEqual(summary["recognition_corrected"], 1)
+        self.assertIn("recognition_correction_rate", summary)
+
+    def test_unknown_actual_class_rejected(self):
+        rid = self._recognize()
+        res = self.client.post(f"/api/recognitions/{rid}/handle",
+                               json={"method": "false_positive", "actual_class": "隔壁老王"})
+        self.assertEqual(res.status_code, 400)
+        row = next(r for r in self.client.get("/api/recognitions?limit=300").json()
+                   if r["id"] == rid)
+        self.assertEqual(row["status"], "pending")
+
+    def test_false_positive_without_actual_class(self):
+        rid = self._recognize()
+        res = self.client.post(f"/api/recognitions/{rid}/handle",
+                               json={"method": "false_positive"})
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertIsNone(res.json()["actual_class"])
+
+
+class VoidRecordApiTest(_ApiBase):
+    """台账留痕：记录只能作废、不能改删，作废后退出安全间隔期与合规统计。"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        res = cls.client.post("/api/plots", json={
+            "code": "T-VOID", "name": "留痕测试区", "variety": "桂味",
+            "area_mu": 1.0, "tree_count": 10, "planting_year": 2018,
+        })
+        cls.plot_id = res.json()["id"]
+
+    def test_pesticide_void_excluded_from_safety(self):
+        today = date.today().isoformat()
+        rec = self.client.post("/api/pesticide-records", json={
+            "plot_id": self.plot_id, "pesticide_name": "高效氯氟氰菊酯",
+            "apply_time": today, "operator": "测试",
+        }).json()
+        self.assertFalse(
+            self.client.get(f"/api/plots/{self.plot_id}/safety-status").json()["safe"])
+
+        res = self.client.post(f"/api/pesticide-records/{rec['id']}/void",
+                               json={"reason": "录入错误", "operator": "测试"})
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()["void_reason"], "录入错误")
+        self.assertEqual(res.json()["voided_by"], "测试")
+
+        # 作废后不再影响采收放行
+        self.assertTrue(
+            self.client.get(f"/api/plots/{self.plot_id}/safety-status").json()["safe"])
+        # 重复作废被拒绝
+        again = self.client.post(f"/api/pesticide-records/{rec['id']}/void", json={})
+        self.assertEqual(again.status_code, 409)
+        # 合规明细不再包含该记录
+        rows = self.client.get("/api/dashboard/compliance?limit=500").json()["rows"]
+        self.assertNotIn(rec["id"], {r["id"] for r in rows})
+        # 但原记录仍可查，且带作废信息
+        plot = self.client.get(f"/api/plots/{self.plot_id}").json()
+        row = next(r for r in plot["pesticides"] if r["id"] == rec["id"])
+        self.assertTrue(row["voided_at"])
+
+        # 溯源同样排除作废记录
+        batch = self.client.post("/api/batches", json={
+            "plot_id": self.plot_id, "harvest_date": today, "packaging_seq": 1,
+        }).json()
+        self.assertEqual(batch["status"], "released")
+        trace = self.client.get(f"/api/trace/{batch['trace_code']}").json()
+        self.assertEqual(trace["care"]["pesticide_count"], 0)
+        self.assertEqual(trace["care"]["pesticides"], [])
+
+    def test_operation_void_keeps_history(self):
+        op = self.client.post("/api/operations", json={
+            "plot_id": self.plot_id, "operation_type": "施肥", "operator": "测试",
+        }).json()
+        res = self.client.post(f"/api/operations/{op['id']}/void", json={})
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()["void_reason"], "未填写原因")
+
+        rows = self.client.get("/api/operations?limit=500").json()
+        row = next(r for r in rows if r["id"] == op["id"])
+        self.assertTrue(row["voided_at"])
+        self.assertEqual(row["voided_by"], "果农")
+
+        self.assertEqual(
+            self.client.post("/api/operations/999999/void", json={}).status_code, 404)
+
+
+class EvalToolTest(unittest.TestCase):
+    """评测脚本的纯函数：标签归一化与统计口径不能悄悄错。"""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+        import eval_vision
+
+        cls.ev = eval_vision
+
+    @staticmethod
+    def _item(label, pred, conf):
+        correct = (pred == "无法判断") if label == "非目标" else (pred == label)
+        return {
+            "file": f"{label}-{pred}.jpg", "label": label, "pred": pred,
+            "confidence": conf, "source": "test",
+            "correct": correct, "abstained": pred == "无法判断",
+            "low_confidence": conf < 0.65, "elapsed_s": 1.0, "error": "",
+        }
+
+    def test_canonical_label(self):
+        self.assertEqual(self.ev._canonical_label("蒂蛀虫"), "荔枝蒂蛀虫")
+        self.assertEqual(self.ev._canonical_label("非目标"), "非目标")
+        self.assertIsNone(self.ev._canonical_label("随便写的"))
+
+    def test_summary_counts(self):
+        items = [
+            self._item("荔枝蒂蛀虫", "荔枝蒂蛀虫", 0.9),
+            self._item("荔枝蒂蛀虫", "荔枝霜疫霉病", 0.8),
+            self._item("非目标", "无法判断", 0.2),
+            self._item("非目标", "荔枝炭疽病", 0.9),
+        ]
+        summary = self.ev.summarize(items, 0.65)
+        self.assertEqual(summary["total"], 4)
+        self.assertEqual(summary["correct"], 2)
+        self.assertEqual(summary["accuracy"], 0.5)
+        self.assertEqual(summary["abstained"], 1)
+        self.assertEqual(summary["non_target_false_alarms"], 1)
+
+    def test_summary_counts_mock_fallbacks(self):
+        items = [
+            self._item("荔枝蒂蛀虫", "荔枝蒂蛀虫", 0.9),
+            {**self._item("荔枝蒂蛀虫", "健康叶片", 0.95),
+             "source": "mock_fallback(RuntimeError)"},
+        ]
+        summary = self.ev.summarize(items, 0.65)
+        self.assertEqual(summary["mock_count"], 1)
 
 
 if __name__ == "__main__":

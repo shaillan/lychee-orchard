@@ -60,3 +60,25 @@
 .kb-entry-main { flex: 1; min-width: 0; margin-right: 16rpx; }
 .kb-entry .picker-arrow { flex: none; font-size: 32rpx; }
 .font-lg .kb-entry .picker-arrow { font-size: 38rpx; }
+
+/* 误判纠错面板 */
+.correct-box {
+  margin-top: 18rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: #F5F9F5;
+  border: 1rpx solid #E1EBE2;
+}
+.correct-box .picker-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #DCE8DF;
+  font-size: 27rpx;
+}
+.correct-box .picker-arrow { color: #9AA9A0; font-size: 30rpx; }
+.font-lg .correct-box .picker-value { font-size: 32rpx; }

@@ -123,6 +123,20 @@
     </block>
     <view wx:else class="mt"><text class="pill good">已处置</text></view>
 
+    <view wx:if="{{result.pending && correcting}}" class="correct-box mt">
+      <view class="small muted">实际类别（可选，选了才计入纠错样本，用于后续微调与评测）</view>
+      <picker mode="selector" range="{{correctOptions}}" value="{{correctIndex}}" bindchange="onCorrectChange">
+        <view class="picker-value">
+          <text>{{correctOptions[correctIndex]}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+      <view class="row mt">
+        <view class="btn ghost" bindtap="cancelCorrect">取消</view>
+        <view class="btn" bindtap="submitCorrect">提交误判</view>
+      </view>
+    </view>
+
     <view wx:if="{{result.kbName}}" class="btn ghost block mt" bindtap="openKbDetail" data-name="{{result.kbName}}">查看「{{result.kbName}}」知识库详情</view>
   </view>
 

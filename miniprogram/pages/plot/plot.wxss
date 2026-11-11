@@ -64,3 +64,18 @@
   border-radius: 10rpx;
   background: #eef4ef;
 }
+
+/* 台账留痕：作废按钮与标记 */
+.void-btn {
+  flex: none;
+  align-self: center;
+  margin-left: 12rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid #E6D2CC;
+  color: #A4553F;
+  font-size: 22rpx;
+}
+.void-tap { opacity: 0.6; }
+.void-pill { margin-left: 10rpx; }
+.font-lg .void-btn { font-size: 26rpx; }

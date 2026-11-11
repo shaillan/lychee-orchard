@@ -1,0 +1,67 @@
+二次确认调用失败（荔枝介壳虫），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+待评测 43 张，识别渠道 api，低置信度阈值 65%
+
+[1/43] ✓ jiekechong_01.jpg: 荔枝介壳虫 → 荔枝介壳虫 (80%, 27.9s)
+[2/43] ✓ jiekechong_02.jpg: 荔枝介壳虫 → 荔枝介壳虫 (80%, 19.7s)
+二次确认调用失败（荔枝介壳虫），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+[3/43] ✓ jiekechong_03.jpg: 荔枝介壳虫 → 荔枝介壳虫 (80%, 22.7s)
+[4/43] ✗ jiekechong_04.jpg: 荔枝介壳虫 → 荔枝煤烟病 (80%, 27.2s)
+[5/43] ✓ jiekechong_05.jpg: 荔枝介壳虫 → 荔枝介壳虫 (80%, 17.8s)
+[6/43] ✗ jimaa_01.jpg: 荔枝蓟马 → 荔枝木虱 (90%, 14.2s)
+[7/43] ✗ jimaa_02.jpg: 荔枝蓟马 → 荔枝木虱 (90%, 40.8s)
+[8/43] ✗ jimaa_03.jpg: 荔枝蓟马 → 荔枝瘿螨 (80%, 20.3s)
+[9/43] ✗ jimaa_04.jpg: 荔枝蓟马 → 荔枝木虱 (90%, 13.4s)
+[10/43] ✗ jimaa_05.jpg: 荔枝蓟马 → 无法判断 (10%, 8.7s)
+模型给出 荔枝蒂蛀虫（虫害），但 evidence 不足（''），已降级为无法判断
+[11/43] ✗ meiyanbing_02.jpg: 荔枝煤烟病 → 无法判断 (0%, 11.9s)
+[12/43] ✗ meiyanbing_03.jpg: 荔枝煤烟病 → 荔枝霜疫霉病 (60%, 23.1s)
+二次确认调用失败（荔枝煤烟病），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+[13/43] ✓ meiyanbing_04.jpg: 荔枝煤烟病 → 荔枝煤烟病 (80%, 21.3s)
+模型给出 荔枝尺蠖（虫害），但 evidence 不足（'形态穿孔、破损（有）；颜色褐色斑点、紫色斑块（有）；表面无；虫体无'），已降级为无法判断
+[14/43] ✗ meiyanbing_08.jpg: 荔枝煤烟病 → 无法判断 (30%, 11.5s)
+[15/43] ✗ tanjubing_01.jpg: 荔枝炭疽病 → 荔枝霜疫霉病 (70%, 16.3s)
+[16/43] ✗ tanjubing_02.jpg: 荔枝炭疽病 → 健康叶片 (95%, 8.5s)
+[17/43] ✓ tanjubing_03.jpg: 荔枝炭疽病 → 荔枝炭疽病 (80%, 17.0s)
+[18/43] ✓ tanjubing_04.jpg: 荔枝炭疽病 → 荔枝炭疽病 (80%, 16.8s)
+[19/43] ✗ tanjubing_05.jpg: 荔枝炭疽病 → 无法判断 (30%, 4.3s)
+二次确认未通过（荔枝小灰蝶）：未看到幼虫蛀食果实、蛀孔、虫粪等典型为害状及形态颜色表面异常，降级为无法判断
+[20/43] ✗ xiaohuidie_01.jpg: 荔枝小灰蝶 → 无法判断 (30%, 19.8s)
+[21/43] ✗ xiaohuidie_02.jpg: 荔枝小灰蝶 → 无法判断 (30%, 3.2s)
+[22/43] ✓ xiaohuidie_03.jpg: 荔枝小灰蝶 → 荔枝小灰蝶 (80%, 13.3s)
+二次确认未通过（荔枝小灰蝶）：未看到蛀孔、虫粪及形态颜色表面异常等特征，降级为无法判断
+[23/43] ✗ xiaohuidie_04.jpg: 荔枝小灰蝶 → 无法判断 (30%, 13.6s)
+[24/43] ✗ xiaohuidie_05.jpg: 荔枝小灰蝶 → 荔枝蒂蛀虫 (90%, 16.6s)
+[25/43] ✓ xiguoyee_01.jpg: 荔枝吸果夜蛾 → 荔枝吸果夜蛾 (90%, 13.8s)
+模型给出 荔枝蒂蛀虫（虫害），但 evidence 不足（"形态{'shape': '无', 'color': '无', 'surface': '无', 'insects': '无"），已降级为无法判断
+[26/43] ✗ xiguoyee_02.jpg: 荔枝吸果夜蛾 → 无法判断 (0%, 12.7s)
+[27/43] ✗ xiguoyee_03.jpg: 荔枝吸果夜蛾 → 无法判断 (0%, 3.7s)
+[28/43] ✗ xiguoyee_04.jpg: 荔枝吸果夜蛾 → 无法判断 (30%, 5.7s)
+[29/43] ✗ xiguoyee_05.jpg: 荔枝吸果夜蛾 → 无法判断 (0%, 6.5s)
+模型给出 荔枝瘿螨（虫害），但 evidence 不足（'形态卷曲:无,皱缩:无,畸形:无,隆起:叶片有多个隆起凸起,穿孔:无；颜色斑点:叶片有褐色斑点,褐变:叶片局部褐变,黑变'），已降级为无法判断
+[30/43] ✗ yeyingwen_02.jpg: 荔枝叶瘿蚊 → 无法判断 (30%, 13.6s)
+[31/43] ✗ yeyingwen_03.jpg: 荔枝叶瘿蚊 → 荔枝瘿螨 (80%, 19.6s)
+[32/43] ✗ yeyingwen_04.jpg: 荔枝叶瘿蚊 → 荔枝蒂蛀虫 (80%, 19.4s)
+[33/43] ✗ yeyingwen_05.jpg: 荔枝叶瘿蚊 → 荔枝煤烟病 (80%, 17.0s)
+二次确认调用失败（荔枝瘿螨），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+[34/43] ✓ yingman_01.jpg: 荔枝瘿螨 → 荔枝瘿螨 (80%, 20.6s)
+模型给出 荔枝蒂蛀虫（虫害），但 evidence 不足（''），已降级为无法判断
+[35/43] ✗ yingman_02.jpg: 荔枝瘿螨 → 无法判断 (0%, 13.9s)
+[36/43] ✓ yingman_03.jpg: 荔枝瘿螨 → 荔枝瘿螨 (60%, 22.2s)
+[37/43] ✓ yingman_04.jpg: 荔枝瘿螨 → 荔枝瘿螨 (80%, 17.6s)
+[38/43] ✗ yingman_05.jpg: 荔枝瘿螨 → 荔枝炭疽病 (60%, 16.1s)
+[39/43] ✗ zaobanbing_01.jpg: 荔枝藻斑病 → 荔枝煤烟病 (90%, 15.8s)
+[40/43] ✗ zaobanbing_02.jpg: 荔枝藻斑病 → 荔枝炭疽病 (0%, 22.2s)
+二次确认未通过（荔枝炭疽病）：未看到褐色凹陷病斑边缘晕圈及后期小黑点等关键特征，降级为无法判断
+[41/43] ✗ zaobanbing_03.jpg: 荔枝藻斑病 → 无法判断 (30%, 25.3s)
+二次确认调用失败（荔枝炭疽病），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+[42/43] ✗ zaobanbing_04.jpg: 荔枝藻斑病 → 荔枝炭疽病 (80%, 23.4s)
+[43/43] ✗ zaobanbing_05.jpg: 荔枝藻斑病 → 荔枝介壳虫 (90%, 18.7s)
+
+===== 结果 =====
+Top-1 准确率：58.7%（61/104）
+拒答率：35.6%  低置信度：32.7%
+非目标误报：0/15
+平均耗时：11.7s
+
+报告已写入：C:\Users\Y Henry\lychee-orchard\docs\eval-report.md
+明细已写入：C:\Users\Y Henry\lychee-orchard\data\eval\report.json

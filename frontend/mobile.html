@@ -193,8 +193,10 @@ async function openPlot(id){
   try {
     const p = await api.get('/api/plots/'+id);
     const s = p.safety;
-    const ops = p.operations.slice(0,8).map(o=>`<div class="list-item"><div class="li-main"><div class="li-title">${esc(o.operation_type)}</div><div class="li-desc">${esc(o.operator)} · ${o.operation_date}</div></div></div>`).join('');
-    const psts = p.pesticides.slice(0,5).map(r=>`<div class="list-item"><div class="li-main"><div class="li-title">${esc(r.pesticide_name)}</div><div class="li-desc">${r.apply_time} · 安全间隔期 ${r.safe_interval_days} 天</div></div></div>`).join('');
+    const voidTag = o => o.voided_at ? ' <span class="pill neutral">已作废</span>' : '';
+    const voidNote = o => o.voided_at ? `<div class="li-desc">作废原因：${esc(o.void_reason||'')}</div>` : '';
+    const ops = p.operations.slice(0,8).map(o=>`<div class="list-item"><div class="li-main"><div class="li-title">${esc(o.operation_type)}${voidTag(o)}</div><div class="li-desc">${esc(o.operator)} · ${o.operation_date}</div>${voidNote(o)}</div></div>`).join('');
+    const psts = p.pesticides.slice(0,5).map(r=>`<div class="list-item"><div class="li-main"><div class="li-title">${esc(r.pesticide_name)}${voidTag(r)}</div><div class="li-desc">${r.apply_time} · 安全间隔期 ${r.safe_interval_days} 天</div>${voidNote(r)}</div></div>`).join('');
 
     // 采收窗口：纯日历规则；成熟度观察只作为佐证展示
     const m = p.maturity || {};

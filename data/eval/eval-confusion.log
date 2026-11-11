@@ -1,0 +1,39 @@
+待评测 14 张，识别渠道 api，低置信度阈值 65%
+
+[1/14] ✗ jimaa_01.jpg: 荔枝蓟马 → 荔枝木虱 (90%, 18.5s)
+[2/14] ✗ jimaa_02.jpg: 荔枝蓟马 → 荔枝木虱 (80%, 19.2s)
+[3/14] ✓ jimaa_03.jpg: 荔枝蓟马 → 荔枝蓟马 (70%, 18.2s)
+[4/14] ✗ jimaa_04.jpg: 荔枝蓟马 → 荔枝木虱 (80%, 19.0s)
+[5/14] ✗ jimaa_05.jpg: 荔枝蓟马 → 无法判断 (10%, 8.3s)
+[6/14] ✓ yeyingwen_02.jpg: 荔枝叶瘿蚊 → 荔枝叶瘿蚊 (90%, 17.7s)
+[7/14] ✗ yeyingwen_03.jpg: 荔枝叶瘿蚊 → 荔枝霜疫霉病 (70%, 21.8s)
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），返回无法判断：模型未返回 JSON：{
+    "shape": "有 畸形",
+    "color": "无",
+    "surface": "无",
+    "insects": "有 中心及周围有淡黄色小虫",
+    "class": "无法判断",
+    "c
+[8/14] ✗ yeyingwen_04.jpg: 荔枝叶瘿蚊 → 无法判断 (0%, 10.8s)
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），返回无法判断：模型未返回 JSON：{
+    "1": "shape": "有 卷曲",
+    "2": "color": "有 褐色斑点, 有 褐变",
+    "3": "surface": "有 煤污",
+    "4": "insects": "无",
+    "
+[9/14] ✗ yeyingwen_05.jpg: 荔枝叶瘿蚊 → 无法判断 (0%, 8.3s)
+[10/14] ✗ zaobanbing_01.jpg: 荔枝藻斑病 → 无法判断 (30%, 11.8s)
+[11/14] ✗ zaobanbing_02.jpg: 荔枝藻斑病 → 荔枝炭疽病 (70%, 23.5s)
+[12/14] ✗ zaobanbing_03.jpg: 荔枝藻斑病 → 荔枝霜疫霉病 (80%, 17.6s)
+二次确认调用失败（荔枝炭疽病），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+[13/14] ✗ zaobanbing_04.jpg: 荔枝藻斑病 → 荔枝炭疽病 (80%, 25.2s)
+[14/14] ✗ zaobanbing_05.jpg: 荔枝藻斑病 → 荔枝介壳虫 (80%, 24.1s)
+
+===== 结果 =====
+Top-1 准确率：60.6%（63/104）
+拒答率：36.5%  低置信度：32.7%
+非目标误报：0/15
+平均耗时：11.43s
+
+报告已写入：C:\Users\Y Henry\lychee-orchard\docs\eval-report.md
+明细已写入：C:\Users\Y Henry\lychee-orchard\data\eval\report.json

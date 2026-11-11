@@ -14,3 +14,12 @@ static/uploads/
 
 # 小程序开发者工具本地配置
 miniprogram/project.private.config.json
+
+# 评测集：图片与人工标注只留在本地（网图版权 + 体积）
+data/eval/images/*
+!data/eval/images/.gitkeep
+data/eval/labels.csv
+data/eval/report.json
+data/eval/manifest.csv
+data/eval/contact-sheet.html
+data/eval/label-sheet.html

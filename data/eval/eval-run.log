@@ -1,0 +1,155 @@
+待评测 104 张，识别渠道 api，低置信度阈值 65%
+
+[1/104] ✓ chihuo_01.jpg: 荔枝尺蠖 → 荔枝尺蠖 (90%, 10.6s)
+[2/104] ✓ chihuo_02.jpg: 荔枝尺蠖 → 荔枝尺蠖 (80%, 12.8s)
+[3/104] ✓ chihuo_03.jpg: 荔枝尺蠖 → 荔枝尺蠖 (80%, 17.6s)
+[4/104] ✓ guibeitianniu_01.jpg: 荔枝龟背天牛 → 荔枝龟背天牛 (90%, 10.9s)
+二次确认未通过（荔枝龟背天牛）：未看到荔枝龟背天牛的虫体或典型为害状，降级为无法判断
+[5/104] ✗ guibeitianniu_02.jpg: 荔枝龟背天牛 → 无法判断 (30%, 12.4s)
+[6/104] ✓ guibeitianniu_03.jpg: 荔枝龟背天牛 → 荔枝龟背天牛 (90%, 11.4s)
+[7/104] ✓ guibeitianniu_04.jpg: 荔枝龟背天牛 → 荔枝龟背天牛 (90%, 12.4s)
+[8/104] ✗ guibeitianniu_05.jpg: 荔枝龟背天牛 → 无法判断 (0%, 4.9s)
+[9/104] ✓ jiankangguoshi_01.jpg: 健康果实 → 健康果实 (100%, 4.2s)
+[10/104] ✓ jiankangguoshi_03.jpg: 健康果实 → 健康果实 (100%, 3.2s)
+[11/104] ✓ jiankangguoshi_04.jpg: 健康果实 → 健康果实 (100%, 3.5s)
+[12/104] ✓ jiankangguoshi_05.jpg: 健康果实 → 健康果实 (100%, 5.1s)
+[13/104] ✓ jiankangyepian_01.jpg: 健康叶片 → 健康叶片 (95%, 5.1s)
+[14/104] ✓ jiankangyepian_02.jpg: 健康叶片 → 健康叶片 (100%, 4.3s)
+[15/104] ✓ jiankangyepian_03.jpg: 健康叶片 → 健康叶片 (100%, 2.9s)
+[16/104] ✓ jiankangyepian_04.jpg: 健康叶片 → 健康叶片 (100%, 3.7s)
+[17/104] ✓ jiankangyepian_05.jpg: 健康叶片 → 健康叶片 (100%, 4.2s)
+[18/104] ✓ jiekechong_01.jpg: 荔枝介壳虫 → 荔枝介壳虫 (80%, 14.5s)
+[19/104] ✓ jiekechong_02.jpg: 荔枝介壳虫 → 荔枝介壳虫 (80%, 10.7s)
+[20/104] ✗ jiekechong_03.jpg: 荔枝介壳虫 → 健康叶片 (100%, 4.8s)
+[21/104] ✗ jiekechong_04.jpg: 荔枝介壳虫 → 健康叶片 (100%, 5.3s)
+[22/104] ✓ jiekechong_05.jpg: 荔枝介壳虫 → 荔枝介壳虫 (80%, 12.0s)
+二次确认未通过（荔枝木虱）：未观察到荔枝木虱的虫体或典型为害状，降级为无法判断
+[23/104] ✗ jimaa_01.jpg: 荔枝蓟马 → 无法判断 (30%, 20.4s)
+[24/104] ✗ jimaa_02.jpg: 荔枝蓟马 → 荔枝木虱 (90%, 10.8s)
+二次确认未通过（荔枝瘿螨）：未看到荔枝瘿螨的虫体或其典型为害状，降级为无法判断
+[25/104] ✗ jimaa_03.jpg: 荔枝蓟马 → 无法判断 (30%, 8.5s)
+[26/104] ✗ jimaa_04.jpg: 荔枝蓟马 → 荔枝木虱 (80%, 16.3s)
+[27/104] ✗ jimaa_05.jpg: 荔枝蓟马 → 无法判断 (50%, 6.4s)
+[28/104] ✓ jinguizi_01.jpg: 荔枝金龟子 → 荔枝金龟子 (90%, 7.4s)
+[29/104] ✗ jinguizi_02.jpg: 荔枝金龟子 → 无法判断 (0%, 4.7s)
+[30/104] ✓ jinguizi_03.jpg: 荔枝金龟子 → 荔枝金龟子 (90%, 7.1s)
+[31/104] ✓ jinguizi_04.jpg: 荔枝金龟子 → 荔枝金龟子 (90%, 8.1s)
+[32/104] ✗ jinguizi_05.jpg: 荔枝金龟子 → 无法判断 (100%, 4.4s)
+[33/104] ✗ lichun_01.jpg: 荔枝蝽 → 无法判断 (50%, 6.1s)
+[34/104] ✓ lichun_02.jpg: 荔枝蝽 → 荔枝蝽 (90%, 10.0s)
+[35/104] ✓ lichun_03.jpg: 荔枝蝽 → 荔枝蝽 (80%, 10.4s)
+二次确认未通过（荔枝小灰蝶）：未看到荔枝小灰蝶的虫体（幼虫、成虫、卵或蛹）及典型为害状（蛀孔、虫粪、缺刻等），降级为无法判断
+[36/104] ✗ lichun_04.jpg: 荔枝蝽 → 无法判断 (30%, 16.7s)
+[37/104] ✗ lichun_05.jpg: 荔枝蝽 → 荔枝金龟子 (80%, 9.6s)
+[38/104] ✗ meiyanbing_02.jpg: 荔枝煤烟病 → 健康叶片 (100%, 7.0s)
+[39/104] ✗ meiyanbing_03.jpg: 荔枝煤烟病 → 无法判断 (90%, 7.9s)
+[40/104] ✗ meiyanbing_04.jpg: 荔枝煤烟病 → 无法判断 (100%, 9.6s)
+[41/104] ✗ meiyanbing_08.jpg: 荔枝煤烟病 → 荔枝尺蠖 (80%, 21.0s)
+[42/104] ✓ mushi_01.jpg: 荔枝木虱 → 荔枝木虱 (90%, 11.4s)
+[43/104] ✗ mushi_02.jpg: 荔枝木虱 → 无法判断 (10%, 5.4s)
+[44/104] ✓ mushi_03.jpg: 荔枝木虱 → 荔枝木虱 (90%, 11.4s)
+[45/104] ✓ mushi_04.jpg: 荔枝木虱 → 荔枝木虱 (90%, 11.5s)
+二次确认调用失败（荔枝木虱），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+[46/104] ✓ mushi_05.jpg: 荔枝木虱 → 荔枝木虱 (90%, 17.0s)
+[47/104] ✓ non_target_01.jpg: 非目标 → 无法判断 (0%, 2.1s)
+[48/104] ✓ non_target_02.jpg: 非目标 → 无法判断 (100%, 2.6s)
+[49/104] ✓ non_target_03.jpg: 非目标 → 无法判断 (0%, 5.5s)
+[50/104] ✓ non_target_04.jpg: 非目标 → 无法判断 (0%, 4.0s)
+[51/104] ✓ non_target_05.jpg: 非目标 → 无法判断 (0%, 4.4s)
+[52/104] ✓ non_target_06.jpg: 非目标 → 无法判断 (0%, 5.2s)
+[53/104] ✓ non_target_07.jpg: 非目标 → 无法判断 (100%, 4.5s)
+[54/104] ✓ non_target_08.jpg: 非目标 → 无法判断 (0%, 5.1s)
+[55/104] ✓ non_target_09.jpg: 非目标 → 无法判断 (100%, 2.7s)
+[56/104] ✓ non_target_10.jpg: 非目标 → 无法判断 (0%, 2.4s)
+[57/104] ✓ non_target_11.jpg: 非目标 → 无法判断 (0%, 3.7s)
+[58/104] ✓ non_target_12.jpg: 非目标 → 无法判断 (100%, 5.8s)
+[59/104] ✓ non_target_13.jpg: 非目标 → 无法判断 (100%, 3.2s)
+[60/104] ✓ non_target_14.jpg: 非目标 → 无法判断 (100%, 3.7s)
+[61/104] ✓ non_target_15.jpg: 非目标 → 无法判断 (0%, 3.9s)
+[62/104] ✓ shuangyimeibing_02.jpg: 荔枝霜疫霉病 → 荔枝霜疫霉病 (80%, 7.4s)
+[63/104] ✓ shuangyimeibing_04.jpg: 荔枝霜疫霉病 → 荔枝霜疫霉病 (90%, 11.5s)
+[64/104] ✗ shuangyimeibing_05.jpg: 荔枝霜疫霉病 → 荔枝炭疽病 (80%, 14.4s)
+[65/104] ✗ suanfubing_01.jpg: 荔枝酸腐病 → 荔枝霜疫霉病 (80%, 10.5s)
+二次确认调用失败（荔枝霜疫霉病），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+[66/104] ✗ suanfubing_03.jpg: 荔枝酸腐病 → 荔枝霜疫霉病 (80%, 19.5s)
+二次确认未通过（荔枝霜疫霉病）：未看到符合荔枝霜疫霉病典型症状（褐色水渍状病斑、霜状霉层等）的形态特征，降级为无法判断
+[67/104] ✗ tanjubing_01.jpg: 荔枝炭疽病 → 无法判断 (30%, 14.9s)
+[68/104] ✗ tanjubing_02.jpg: 荔枝炭疽病 → 健康叶片 (100%, 4.1s)
+二次确认未通过（荔枝霜疫霉病）：未看到褐色水渍状病斑及白色霜状霉层等典型特征，降级为无法判断
+[69/104] ✗ tanjubing_03.jpg: 荔枝炭疽病 → 无法判断 (30%, 16.7s)
+[70/104] ✓ tanjubing_04.jpg: 荔枝炭疽病 → 荔枝炭疽病 (70%, 16.5s)
+[71/104] ✗ tanjubing_05.jpg: 荔枝炭疽病 → 无法判断 (60%, 9.1s)
+模型给出 荔枝蒂蛀虫（虫害），但 evidence 不足（'荔枝果实有破损，内部可见黑色异常物，果皮呈红色'），已降级为无法判断
+[72/104] ✗ tichengchong_02.jpg: 荔枝蒂蛀虫 → 无法判断 (30%, 6.7s)
+[73/104] ✓ tichengchong_03.jpg: 荔枝蒂蛀虫 → 荔枝蒂蛀虫 (80%, 10.1s)
+[74/104] ✓ tichengchong_04.jpg: 荔枝蒂蛀虫 → 荔枝蒂蛀虫 (90%, 10.1s)
+二次确认调用失败（荔枝蒂蛀虫），保留首轮结果：glm-4.1v-thinking-flash: ReadTimeout: The read operation timed out
+[75/104] ✓ tichengchong_05.jpg: 荔枝蒂蛀虫 → 荔枝蒂蛀虫 (80%, 17.2s)
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[76/104] ✗ xiaohuidie_01.jpg: 荔枝小灰蝶 → 荔枝煤烟病 (94%, 3874.1s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[77/104] ✗ xiaohuidie_02.jpg: 荔枝小灰蝶 → 荔枝炭疽病 (89%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[78/104] ✗ xiaohuidie_03.jpg: 荔枝小灰蝶 → 健康果实 (94%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[79/104] ✗ xiaohuidie_04.jpg: 荔枝小灰蝶 → 荔枝炭疽病 (81%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[80/104] ✓ xiaohuidie_05.jpg: 荔枝小灰蝶 → 荔枝小灰蝶 (84%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[81/104] ✗ xiguoyee_01.jpg: 荔枝吸果夜蛾 → 荔枝小灰蝶 (93%, 0.5s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[82/104] ✗ xiguoyee_02.jpg: 荔枝吸果夜蛾 → 荔枝蒂蛀虫 (90%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[83/104] ✗ xiguoyee_03.jpg: 荔枝吸果夜蛾 → 荔枝瘿螨 (93%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[84/104] ✗ xiguoyee_04.jpg: 荔枝吸果夜蛾 → 荔枝炭疽病 (94%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[85/104] ✗ xiguoyee_05.jpg: 荔枝吸果夜蛾 → 荔枝木虱 (86%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[86/104] ✗ yachong_01.jpg: 荔枝蚜虫 → 荔枝蒂蛀虫 (90%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[87/104] ✗ yachong_02.jpg: 荔枝蚜虫 → 荔枝霜疫霉病 (83%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[88/104] ✗ yachong_03.jpg: 荔枝蚜虫 → 荔枝尺蠖 (87%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[89/104] ✗ yachong_04.jpg: 荔枝蚜虫 → 荔枝瘿螨 (96%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[90/104] ✗ yachong_05.jpg: 荔枝蚜虫 → 荔枝霜疫霉病 (88%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[91/104] ✗ yeyingwen_02.jpg: 荔枝叶瘿蚊 → 荔枝蒂蛀虫 (88%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[92/104] ✗ yeyingwen_03.jpg: 荔枝叶瘿蚊 → 荔枝蝽 (82%, 0.4s) [mock]
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: ConnectError: [Errno 11001] getaddrinfo failed
+[93/104] ✗ yeyingwen_04.jpg: 荔枝叶瘿蚊 → 荔枝蒂蛀虫 (87%, 0.4s) [mock]
+二次确认调用失败（荔枝霜疫霉病），保留首轮结果：glm-4.6v-flash: Client error '429 Too Many Requests' for url 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429 | {"error":{"code":"1305","message":"该模型当前访问量过大，请您稍后再试"}}
+[94/104] ✗ yeyingwen_05.jpg: 荔枝叶瘿蚊 → 荔枝霜疫霉病 (80%, 16.6s)
+[95/104] ✗ yingman_01.jpg: 荔枝瘿螨 → 健康叶片 (100%, 7.8s)
+[96/104] ✗ yingman_02.jpg: 荔枝瘿螨 → 无法判断 (30%, 10.5s)
+云端识别失败（glm-4.1v-thinking-flash, glm-4.6v-flash），已降级本地模拟：glm-4.6v-flash: Client error '429 Too Many Requests' for url 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429 | {"error":{"code":"1305","message":"该模型当前访问量过大，请您稍后再试"}}
+[97/104] ✗ yingman_03.jpg: 荔枝瘿螨 → 健康叶片 (97%, 36995.7s) [mock]
+模型给出 荔枝瘿螨（虫害），但 evidence 不足（'叶片呈畸形，有黄绿褐相间的病斑，分布于枝条多处'），已降级为无法判断
+[98/104] ✗ yingman_04.jpg: 荔枝瘿螨 → 无法判断 (30%, 28.4s)
+二次确认调用失败（荔枝霜疫霉病），保留首轮结果：glm-4.1v-thinking-flash: WriteTimeout: The write operation timed out
+[99/104] ✗ yingman_05.jpg: 荔枝瘿螨 → 荔枝霜疫霉病 (60%, 46.6s)
+二次确认调用失败（荔枝煤烟病），保留首轮结果：glm-4.1v-thinking-flash: WriteTimeout: The write operation timed out
+[100/104] ✗ zaobanbing_01.jpg: 荔枝藻斑病 → 荔枝煤烟病 (80%, 24.9s)
+二次确认调用失败（荔枝炭疽病），保留首轮结果：glm-4.1v-thinking-flash: WriteTimeout: The write operation timed out
+[101/104] ✗ zaobanbing_02.jpg: 荔枝藻斑病 → 荔枝炭疽病 (80%, 42.0s)
+[102/104] ✗ zaobanbing_03.jpg: 荔枝藻斑病 → 健康叶片 (90%, 28.1s)
+二次确认调用失败（荔枝炭疽病），保留首轮结果：glm-4.1v-thinking-flash: WriteTimeout: The write operation timed out
+[103/104] ✗ zaobanbing_04.jpg: 荔枝藻斑病 → 荔枝炭疽病 (90%, 45.7s)
+二次确认调用失败（荔枝煤烟病），保留首轮结果：glm-4.1v-thinking-flash: WriteTimeout: The write operation timed out
+[104/104] ✗ zaobanbing_05.jpg: 荔枝藻斑病 → 荔枝煤烟病 (80%, 42.2s)
+
+===== 结果 =====
+Top-1 准确率：47.1%（49/104）
+拒答率：31.7%  低置信度：24.0%
+非目标误报：0/15
+平均耗时：402.14s
+
+⚠️ 有 19/104 张走了本地模拟降级，这些结果不代表真实模型能力，建议检查网络/额度后重跑。
+
+报告已写入：C:\Users\Y Henry\lychee-orchard\docs\eval-report.md
+明细已写入：C:\Users\Y Henry\lychee-orchard\data\eval\report.json

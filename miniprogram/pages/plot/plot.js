@@ -23,6 +23,35 @@ Page({
     this.load();
   },
 
+  // 台账留痕：记录不能改也不能删，只能作废；原记录保留并可查
+  voidRecord(e) {
+    const ds = e.currentTarget.dataset;
+    const id = ds.id;
+    if (!id) return;
+    wx.showModal({
+      title: '作废记录',
+      editable: true,
+      placeholderText: '填写作废原因（如录入错误、重复记录）',
+      cancelText: '取消',
+      confirmText: '确认作废',
+      success: res => {
+        if (!res.confirm) return;
+        const url = ds.kind === 'pest'
+          ? '/api/pesticide-records/' + id + '/void'
+          : '/api/operations/' + id + '/void';
+        api.request(url, 'POST', {
+          reason: (res.content || '').trim(),
+          operator: '果农'
+        })
+          .then(() => {
+            wx.showToast({ title: '已作废', icon: 'success' });
+            this.load();
+          })
+          .catch(err => wx.showToast({ title: err.message || '作废失败', icon: 'none' }));
+      }
+    });
+  },
+
   load() {
     this.setData({ loading: true, error: '' });
     api.request('/api/plots/' + this.id)

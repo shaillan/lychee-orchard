@@ -66,7 +66,8 @@ async function loadSummary(){
     <div class="tile"><div class="t-val">${(s.yield_2026_kg/1000).toFixed(1)}<span class="small muted"> t</span></div><div class="t-label">2026 年总产量</div></div>
     <div class="tile"><div class="t-val">${s.pesticide_applications_30d}<span class="small muted"> 次</span></div><div class="t-label">近 30 天用药</div></div>
     <div class="tile"><div class="t-val">${s.recognitions_7d}<span class="small muted"> 次</span></div><div class="t-label">近 7 天识别</div></div>
-    <div class="tile"><div class="t-val">${Math.round((s.recognition_disposal_rate||0)*100)}<span class="small muted">%</span></div><div class="t-label">识别处置率 · 近 7 天已处置 ${s.recognition_handled_7d||0} 次</div></div>`;
+    <div class="tile"><div class="t-val">${Math.round((s.recognition_disposal_rate||0)*100)}<span class="small muted">%</span></div><div class="t-label">识别处置率 · 近 7 天已处置 ${s.recognition_handled_7d||0} 次</div></div>
+    <div class="tile"><div class="t-val">${s.recognition_corrected||0}<span class="small muted"> 条</span></div><div class="t-label">纠错回流 · 误判 ${s.recognition_false_positive||0} 次，纠错率 ${Math.round((s.recognition_correction_rate||0)*100)}%</div></div>`;
 
   const alertHtml = s.unsafe_plots.map(u=>`
     <div class="alert critical"><div class="al-title">${u.plot}：用药安全间隔期内</div>

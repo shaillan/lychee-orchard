@@ -1,0 +1,4 @@
+file,label,model_guess,model_confidence,model_source
+example_leaf_healthy.jpg,健康叶片,健康叶片,0.910,zhipu:glm-4.1v-thinking-flash
+example_leaf_moth.jpg,荔枝蒂蛀虫,荔枝蒂蛀虫,0.880,zhipu:glm-4.1v-thinking-flash
+example_desk.jpg,非目标,无法判断,0.120,zhipu:glm-4.1v-thinking-flash

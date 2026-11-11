@@ -1,0 +1,15 @@
+待评测 4 张，识别渠道 api，低置信度阈值 65%
+
+[1/4] ✓ yeyingwen_02.jpg: 荔枝叶瘿蚊 → 荔枝叶瘿蚊 (90%, 16.7s)
+[2/4] ✗ yeyingwen_03.jpg: 荔枝叶瘿蚊 → 荔枝霜疫霉病 (70%, 19.5s)
+[3/4] ✗ yeyingwen_04.jpg: 荔枝叶瘿蚊 → 无法判断 (30%, 5.1s)
+[4/4] ✗ yeyingwen_05.jpg: 荔枝叶瘿蚊 → 荔枝煤烟病 (80%, 17.5s)
+
+===== 结果 =====
+Top-1 准确率：60.6%（63/104）
+拒答率：35.6%  低置信度：31.7%
+非目标误报：0/15
+平均耗时：11.43s
+
+报告已写入：C:\Users\Y Henry\lychee-orchard\docs\eval-report.md
+明细已写入：C:\Users\Y Henry\lychee-orchard\data\eval\report.json

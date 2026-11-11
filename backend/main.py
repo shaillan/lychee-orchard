@@ -147,6 +147,13 @@ class RecognitionHandleIn(BaseModel):
     images: list[str] = Field(default_factory=list)
     # 忽略 / 误判 / 通用备注
     note: str = ""
+    # 人工纠错：真实类别（必须来自知识库），用于评测与训练数据回流
+    actual_class: str | None = None
+
+
+class VoidIn(BaseModel):
+    reason: str = ""
+    operator: str = "果农"
 
 
 class WeatherRegionIn(BaseModel):
@@ -212,7 +219,8 @@ def check_safety(conn, plot_id: int, harvest_date: str) -> dict:
     """计算该地块在指定采收日是否满足所有用药的安全间隔期。"""
     hd = _parse_date(harvest_date)
     rows = conn.execute(
-        "SELECT * FROM pesticide_records WHERE plot_id=? ORDER BY apply_time DESC", (plot_id,)
+        "SELECT * FROM pesticide_records WHERE plot_id=? AND voided_at IS NULL "
+        "ORDER BY apply_time DESC", (plot_id,)
     ).fetchall()
     for r in rows:
         applied = _parse_date(r["apply_time"])
@@ -374,10 +382,10 @@ def _compliance_row(rec: dict, as_of: date | None = None) -> dict:
 
 def _compliance_rows(conn, plot_id: int | None = None, limit: int = 200) -> list[dict]:
     sql = ("SELECT r.*, p.name AS plot_name FROM pesticide_records r "
-           "JOIN plots p ON p.id=r.plot_id ")
+           "JOIN plots p ON p.id=r.plot_id WHERE r.voided_at IS NULL ")
     args: tuple = ()
     if plot_id:
-        sql += "WHERE r.plot_id=? "
+        sql += "AND r.plot_id=? "
         args = (plot_id,)
     sql += "ORDER BY r.apply_time DESC, r.id DESC LIMIT ?"
     rows = rows_to_dicts(conn.execute(sql, (*args, limit)).fetchall())
@@ -562,6 +570,44 @@ def create_pesticide_record(payload: PesticideRecordIn):
         )
 
 
+def _void_record(conn, table: str, record_id: int, payload: VoidIn) -> dict:
+    """台账留痕：记录不允许修改或删除，只能作废；原记录永久保留并可查。
+
+    作废后该记录不再参与安全间隔期、合规明细、看板统计与溯源，但作废人与原因留档。
+    """
+    row = conn.execute(f"SELECT * FROM {table} WHERE id=?", (record_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "记录不存在")
+    if row["voided_at"]:
+        raise HTTPException(409, f"该记录已于 {row['voided_at']} 作废，无需重复操作")
+    now = datetime.now().isoformat(timespec="seconds")
+    reason = (payload.reason or "").strip() or "未填写原因"
+    conn.execute(
+        f"UPDATE {table} SET voided_at=?, void_reason=?, voided_by=? WHERE id=?",
+        (now, reason, payload.operator or "果农", record_id),
+    )
+    return {
+        **dict(row),
+        "voided_at": now,
+        "void_reason": reason,
+        "voided_by": payload.operator or "果农",
+    }
+
+
+@app.post("/api/operations/{record_id}/void")
+def void_operation(record_id: int, payload: VoidIn):
+    with get_conn() as conn:
+        return _void_record(conn, "farm_operations", record_id, payload)
+
+
+@app.post("/api/pesticide-records/{record_id}/void")
+def void_pesticide_record(record_id: int, payload: VoidIn):
+    with get_conn() as conn:
+        result = _void_record(conn, "pesticide_records", record_id, payload)
+        # 作废不自动放行既有批次：放行/拦截是历史事实，需重新建批次复核
+        return result
+
+
 @app.get("/api/plots/{plot_id}/safety-status")
 def safety_status(plot_id: int, harvest_date: str | None = None):
     with get_conn() as conn:
@@ -688,6 +734,11 @@ def handle_recognition(rid: int, payload: RecognitionHandleIn):
     if payload.method not in allowed:
         raise HTTPException(400, f"不支持的处置方式：{payload.method}")
 
+    # 纠错类别必须是知识库里的已知类别，否则回流数据不可用
+    actual_class = (payload.actual_class or "").strip() or None
+    if actual_class and actual_class not in PESTS:
+        raise HTTPException(400, f"纠错类别不在知识库中：{actual_class}")
+
     with get_conn() as conn:
         rec = conn.execute("SELECT * FROM recognitions WHERE id=?", (rid,)).fetchone()
         if not rec:
@@ -743,9 +794,9 @@ def handle_recognition(rid: int, payload: RecognitionHandleIn):
         handled_at = datetime.now().isoformat(timespec="seconds")
         conn.execute(
             "UPDATE recognitions SET status=?, handled_at=?, handle_method=?, handle_note=?, "
-            "pesticide_record_id=?, operation_id=? WHERE id=?",
+            "pesticide_record_id=?, operation_id=?, actual_class=? WHERE id=?",
             (status, handled_at, payload.method, payload.note,
-             pesticide_record_id, operation_id, rid),
+             pesticide_record_id, operation_id, actual_class, rid),
         )
         return {
             "id": rid,
@@ -754,8 +805,25 @@ def handle_recognition(rid: int, payload: RecognitionHandleIn):
             "handled_at": handled_at,
             "pesticide_record_id": pesticide_record_id,
             "operation_id": operation_id,
+            "actual_class": actual_class,
+            "detected_class": rec["detected_class"],
             "summary": summary,
         }
+
+
+@app.get("/api/recognitions/corrections")
+def list_corrections(limit: int = Query(500, le=2000)):
+    """人工纠错样本：可直接作为评测集或微调数据（detected_class → actual_class）。
+
+    只返回写了实际类别的记录；仅标「误判」但没选正确类别的不算纠错样本。
+    """
+    with get_conn() as conn:
+        rows = rows_to_dicts(conn.execute(
+            "SELECT id, plot_id, image_url, detected_class, actual_class, confidence, "
+            "handle_note, handled_at, created_at FROM recognitions "
+            "WHERE actual_class IS NOT NULL AND actual_class != detected_class "
+            "ORDER BY handled_at DESC LIMIT ?", (limit,)).fetchall())
+    return {"count": len(rows), "rows": rows}
 
 
 @app.get("/api/pests")
@@ -962,18 +1030,20 @@ def get_trace(code: str):
         plot = _plot_or_404(conn, batch["plot_id"])
         ops = rows_to_dicts(conn.execute(
             "SELECT operation_type, operator, operation_date FROM farm_operations "
-            "WHERE plot_id=? AND operation_date <= ? ORDER BY operation_date DESC LIMIT 12",
+            "WHERE plot_id=? AND operation_date <= ? AND voided_at IS NULL "
+            "ORDER BY operation_date DESC LIMIT 12",
             (batch["plot_id"], batch["harvest_date"])).fetchall())
         pesticide_count = conn.execute(
-            "SELECT COUNT(*) AS c FROM pesticide_records WHERE plot_id=? AND apply_time <= ?",
+            "SELECT COUNT(*) AS c FROM pesticide_records WHERE plot_id=? AND apply_time <= ? "
+            "AND voided_at IS NULL",
             (batch["plot_id"], batch["harvest_date"])).fetchone()["c"]
         last_pesticide = conn.execute(
             "SELECT * FROM pesticide_records WHERE plot_id=? AND apply_time <= ? "
-            "ORDER BY apply_time DESC LIMIT 1",
+            "AND voided_at IS NULL ORDER BY apply_time DESC LIMIT 1",
             (batch["plot_id"], batch["harvest_date"])).fetchone()
         pesticides = rows_to_dicts(conn.execute(
             "SELECT pesticide_name, cas_no, operator, apply_time, safe_interval_days "
-            "FROM pesticide_records WHERE plot_id=? AND apply_time <= ? "
+            "FROM pesticide_records WHERE plot_id=? AND apply_time <= ? AND voided_at IS NULL "
             "ORDER BY apply_time DESC LIMIT 12",
             (batch["plot_id"], batch["harvest_date"])).fetchall())
         pesticides = [_compliance_row(p) for p in pesticides]
@@ -1049,7 +1119,8 @@ def todos():
                     "action": "查看用药台账",
                 })
             last_op = conn.execute(
-                "SELECT operation_date FROM farm_operations WHERE plot_id=? ORDER BY operation_date DESC LIMIT 1",
+                "SELECT operation_date FROM farm_operations WHERE plot_id=? AND voided_at IS NULL "
+                "ORDER BY operation_date DESC LIMIT 1",
                 (p["id"],)).fetchone()
             if last_op:
                 gap = (date.today() - _parse_date(last_op["operation_date"])).days
@@ -1213,7 +1284,7 @@ def dashboard_summary():
         plots = conn.execute("SELECT COUNT(*) c, SUM(area_mu) a, SUM(tree_count) t FROM plots").fetchone()
         recent_iso = (datetime.now() - timedelta(days=30)).isoformat(timespec="seconds")
         applications_30d = conn.execute(
-            "SELECT COUNT(*) c FROM pesticide_records WHERE apply_time >= ?",
+            "SELECT COUNT(*) c FROM pesticide_records WHERE apply_time >= ? AND voided_at IS NULL",
             ((datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"),)).fetchone()["c"]
         recognitions_7d = conn.execute(
             "SELECT COUNT(*) c FROM recognitions WHERE created_at >= ?",
@@ -1221,6 +1292,14 @@ def dashboard_summary():
         handled_7d = conn.execute(
             "SELECT COUNT(*) c FROM recognitions WHERE created_at >= ? AND status != 'pending'",
             ((datetime.now() - timedelta(days=7)).isoformat(timespec="seconds"),)).fetchone()["c"]
+        # 纠错回流：人工判定实际类别且与模型不同，才是有效纠错样本
+        labelled_total = conn.execute(
+            "SELECT COUNT(*) c FROM recognitions WHERE status != 'pending'").fetchone()["c"]
+        false_positive_total = conn.execute(
+            "SELECT COUNT(*) c FROM recognitions WHERE status='false_positive'").fetchone()["c"]
+        corrected_total = conn.execute(
+            "SELECT COUNT(*) c FROM recognitions WHERE actual_class IS NOT NULL "
+            "AND actual_class != detected_class").fetchone()["c"]
         blocked = conn.execute("SELECT COUNT(*) c FROM batches WHERE status='blocked'").fetchone()["c"]
         released = conn.execute("SELECT COUNT(*) c FROM batches WHERE status='released'").fetchone()["c"]
 
@@ -1261,6 +1340,10 @@ def dashboard_summary():
             "recognitions_7d": recognitions_7d,
             "recognition_handled_7d": handled_7d,
             "recognition_disposal_rate": round(handled_7d / recognitions_7d, 4) if recognitions_7d else 0.0,
+            "recognition_labelled": labelled_total,
+            "recognition_false_positive": false_positive_total,
+            "recognition_corrected": corrected_total,
+            "recognition_correction_rate": round(corrected_total / labelled_total, 4) if labelled_total else 0.0,
             "blocked_batches": blocked, "released_batches": released,
             "coldchain_overdue": coldchain_overdue,
             "residue_unqualified": residue_unqualified,
@@ -1355,7 +1438,8 @@ def yield_trend():
 def pesticide_trend():
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT apply_time, pesticide_name FROM pesticide_records ORDER BY apply_time").fetchall()
+            "SELECT apply_time, pesticide_name FROM pesticide_records "
+            "WHERE voided_at IS NULL ORDER BY apply_time").fetchall()
         months: dict[str, dict[str, int]] = {}
         for r in rows:
             month = r["apply_time"][:7]

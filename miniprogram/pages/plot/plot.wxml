@@ -71,9 +71,11 @@
       <block wx:if="{{plot.operations.length}}">
         <view wx:for="{{plot.operations}}" wx:key="id" class="list-item">
           <view class="li-main">
-            <view class="li-title">{{item.operation_type}}</view>
+            <view class="li-title">{{item.operation_type}}<text wx:if="{{item.voided_at}}" class="pill neutral void-pill">已作废</text></view>
             <view class="li-desc">{{item.operator}} · {{item.operation_date}}</view>
+            <view wx:if="{{item.voided_at}}" class="li-desc">作废原因：{{item.void_reason}}</view>
           </view>
+          <view wx:if="{{!item.voided_at}}" class="void-btn" hover-class="void-tap" bindtap="voidRecord" data-kind="op" data-id="{{item.id}}">作废</view>
         </view>
       </block>
       <view wx:else class="empty">暂无记录</view>
@@ -84,9 +86,11 @@
       <block wx:if="{{plot.pesticides.length}}">
         <view wx:for="{{plot.pesticides}}" wx:key="id" class="list-item">
           <view class="li-main">
-            <view class="li-title">{{item.pesticide_name}}</view>
+            <view class="li-title">{{item.pesticide_name}}<text wx:if="{{item.voided_at}}" class="pill neutral void-pill">已作废</text></view>
             <view class="li-desc">{{item.apply_time}} · 安全间隔期 {{item.safe_interval_days}} 天</view>
+            <view wx:if="{{item.voided_at}}" class="li-desc">作废原因：{{item.void_reason}}</view>
           </view>
+          <view wx:if="{{!item.voided_at}}" class="void-btn" hover-class="void-tap" bindtap="voidRecord" data-kind="pest" data-id="{{item.id}}">作废</view>
         </view>
       </block>
       <view wx:else class="empty">暂无记录</view>

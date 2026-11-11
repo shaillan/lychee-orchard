@@ -1,0 +1,1518 @@
+{
+  "generated_at": "2026-11-11T11:09:55",
+  "provider": "api",
+  "summary": {
+    "total": 104,
+    "correct": 61,
+    "accuracy": 0.5865,
+    "abstained": 37,
+    "abstain_rate": 0.3558,
+    "low_confidence": 34,
+    "low_confidence_rate": 0.3269,
+    "actionable": 70,
+    "non_target_total": 15,
+    "non_target_correct": 15,
+    "non_target_false_alarms": 0,
+    "false_alarm_files": [],
+    "per_label": {
+      "荔枝尺蠖": {
+        "support": 3,
+        "correct": 3
+      },
+      "荔枝龟背天牛": {
+        "support": 5,
+        "correct": 3
+      },
+      "健康果实": {
+        "support": 4,
+        "correct": 4
+      },
+      "健康叶片": {
+        "support": 5,
+        "correct": 5
+      },
+      "荔枝介壳虫": {
+        "support": 5,
+        "correct": 4
+      },
+      "荔枝蓟马": {
+        "support": 5,
+        "correct": 0
+      },
+      "荔枝金龟子": {
+        "support": 5,
+        "correct": 3
+      },
+      "荔枝蝽": {
+        "support": 5,
+        "correct": 2
+      },
+      "荔枝煤烟病": {
+        "support": 4,
+        "correct": 1
+      },
+      "荔枝木虱": {
+        "support": 5,
+        "correct": 4
+      },
+      "非目标": {
+        "support": 15,
+        "correct": 15
+      },
+      "荔枝霜疫霉病": {
+        "support": 3,
+        "correct": 2
+      },
+      "荔枝酸腐病": {
+        "support": 2,
+        "correct": 0
+      },
+      "荔枝炭疽病": {
+        "support": 5,
+        "correct": 2
+      },
+      "荔枝蒂蛀虫": {
+        "support": 4,
+        "correct": 3
+      },
+      "荔枝小灰蝶": {
+        "support": 5,
+        "correct": 1
+      },
+      "荔枝吸果夜蛾": {
+        "support": 5,
+        "correct": 1
+      },
+      "荔枝蚜虫": {
+        "support": 5,
+        "correct": 5
+      },
+      "荔枝叶瘿蚊": {
+        "support": 4,
+        "correct": 0
+      },
+      "荔枝瘿螨": {
+        "support": 5,
+        "correct": 3
+      },
+      "荔枝藻斑病": {
+        "support": 5,
+        "correct": 0
+      }
+    },
+    "confusion": [
+      [
+        "荔枝吸果夜蛾",
+        "无法判断",
+        4
+      ],
+      [
+        "荔枝蓟马",
+        "荔枝木虱",
+        3
+      ],
+      [
+        "荔枝小灰蝶",
+        "无法判断",
+        3
+      ],
+      [
+        "荔枝龟背天牛",
+        "无法判断",
+        2
+      ],
+      [
+        "荔枝金龟子",
+        "无法判断",
+        2
+      ],
+      [
+        "荔枝蝽",
+        "无法判断",
+        2
+      ],
+      [
+        "荔枝煤烟病",
+        "无法判断",
+        2
+      ],
+      [
+        "荔枝酸腐病",
+        "荔枝霜疫霉病",
+        2
+      ],
+      [
+        "荔枝藻斑病",
+        "荔枝炭疽病",
+        2
+      ],
+      [
+        "荔枝介壳虫",
+        "荔枝煤烟病",
+        1
+      ],
+      [
+        "荔枝蓟马",
+        "荔枝瘿螨",
+        1
+      ],
+      [
+        "荔枝蓟马",
+        "无法判断",
+        1
+      ],
+      [
+        "荔枝蝽",
+        "荔枝金龟子",
+        1
+      ],
+      [
+        "荔枝煤烟病",
+        "荔枝霜疫霉病",
+        1
+      ],
+      [
+        "荔枝木虱",
+        "无法判断",
+        1
+      ],
+      [
+        "荔枝霜疫霉病",
+        "荔枝炭疽病",
+        1
+      ],
+      [
+        "荔枝炭疽病",
+        "荔枝霜疫霉病",
+        1
+      ],
+      [
+        "荔枝炭疽病",
+        "健康叶片",
+        1
+      ],
+      [
+        "荔枝炭疽病",
+        "无法判断",
+        1
+      ],
+      [
+        "荔枝蒂蛀虫",
+        "无法判断",
+        1
+      ],
+      [
+        "荔枝小灰蝶",
+        "荔枝蒂蛀虫",
+        1
+      ],
+      [
+        "荔枝叶瘿蚊",
+        "无法判断",
+        1
+      ],
+      [
+        "荔枝叶瘿蚊",
+        "荔枝瘿螨",
+        1
+      ],
+      [
+        "荔枝叶瘿蚊",
+        "荔枝蒂蛀虫",
+        1
+      ],
+      [
+        "荔枝叶瘿蚊",
+        "荔枝煤烟病",
+        1
+      ],
+      [
+        "荔枝瘿螨",
+        "无法判断",
+        1
+      ],
+      [
+        "荔枝瘿螨",
+        "荔枝炭疽病",
+        1
+      ],
+      [
+        "荔枝藻斑病",
+        "荔枝煤烟病",
+        1
+      ],
+      [
+        "荔枝藻斑病",
+        "无法判断",
+        1
+      ],
+      [
+        "荔枝藻斑病",
+        "荔枝介壳虫",
+        1
+      ]
+    ],
+    "latency_avg": 11.7,
+    "latency_median": 11.29,
+    "latency_max": 40.84,
+    "confidence_avg_correct": 0.76,
+    "confidence_avg_wrong": 0.494,
+    "sources": {
+      "zhipu:glm-4.1v-thinking-flash": 91,
+      "zhipu:glm-4.1v-thinking-flash#confirm_false": 5,
+      "zhipu:glm-4.1v-thinking-flash#confirm_error": 8
+    },
+    "mock_count": 0,
+    "conf_threshold": 0.65
+  },
+  "items": [
+    {
+      "file": "chihuo_01.jpg",
+      "label": "荔枝尺蠖",
+      "pred": "荔枝尺蠖",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 10.6,
+      "error": ""
+    },
+    {
+      "file": "chihuo_02.jpg",
+      "label": "荔枝尺蠖",
+      "pred": "荔枝尺蠖",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 12.81,
+      "error": ""
+    },
+    {
+      "file": "chihuo_03.jpg",
+      "label": "荔枝尺蠖",
+      "pred": "荔枝尺蠖",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 17.57,
+      "error": ""
+    },
+    {
+      "file": "guibeitianniu_01.jpg",
+      "label": "荔枝龟背天牛",
+      "pred": "荔枝龟背天牛",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 10.92,
+      "error": ""
+    },
+    {
+      "file": "guibeitianniu_02.jpg",
+      "label": "荔枝龟背天牛",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_false",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 12.4,
+      "error": ""
+    },
+    {
+      "file": "guibeitianniu_03.jpg",
+      "label": "荔枝龟背天牛",
+      "pred": "荔枝龟背天牛",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 11.38,
+      "error": ""
+    },
+    {
+      "file": "guibeitianniu_04.jpg",
+      "label": "荔枝龟背天牛",
+      "pred": "荔枝龟背天牛",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 12.39,
+      "error": ""
+    },
+    {
+      "file": "guibeitianniu_05.jpg",
+      "label": "荔枝龟背天牛",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 4.88,
+      "error": ""
+    },
+    {
+      "file": "jiankangguoshi_01.jpg",
+      "label": "健康果实",
+      "pred": "健康果实",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 4.18,
+      "error": ""
+    },
+    {
+      "file": "jiankangguoshi_03.jpg",
+      "label": "健康果实",
+      "pred": "健康果实",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 3.23,
+      "error": ""
+    },
+    {
+      "file": "jiankangguoshi_04.jpg",
+      "label": "健康果实",
+      "pred": "健康果实",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 3.46,
+      "error": ""
+    },
+    {
+      "file": "jiankangguoshi_05.jpg",
+      "label": "健康果实",
+      "pred": "健康果实",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 5.09,
+      "error": ""
+    },
+    {
+      "file": "jiankangyepian_01.jpg",
+      "label": "健康叶片",
+      "pred": "健康叶片",
+      "confidence": 0.95,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 5.1,
+      "error": ""
+    },
+    {
+      "file": "jiankangyepian_02.jpg",
+      "label": "健康叶片",
+      "pred": "健康叶片",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 4.29,
+      "error": ""
+    },
+    {
+      "file": "jiankangyepian_03.jpg",
+      "label": "健康叶片",
+      "pred": "健康叶片",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 2.94,
+      "error": ""
+    },
+    {
+      "file": "jiankangyepian_04.jpg",
+      "label": "健康叶片",
+      "pred": "健康叶片",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 3.72,
+      "error": ""
+    },
+    {
+      "file": "jiankangyepian_05.jpg",
+      "label": "健康叶片",
+      "pred": "健康叶片",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 4.2,
+      "error": ""
+    },
+    {
+      "file": "jiekechong_01.jpg",
+      "label": "荔枝介壳虫",
+      "pred": "荔枝介壳虫",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_error",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 27.85,
+      "error": ""
+    },
+    {
+      "file": "jiekechong_02.jpg",
+      "label": "荔枝介壳虫",
+      "pred": "荔枝介壳虫",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 19.71,
+      "error": ""
+    },
+    {
+      "file": "jiekechong_03.jpg",
+      "label": "荔枝介壳虫",
+      "pred": "荔枝介壳虫",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_error",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 22.68,
+      "error": ""
+    },
+    {
+      "file": "jiekechong_04.jpg",
+      "label": "荔枝介壳虫",
+      "pred": "荔枝煤烟病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 27.23,
+      "error": ""
+    },
+    {
+      "file": "jiekechong_05.jpg",
+      "label": "荔枝介壳虫",
+      "pred": "荔枝介壳虫",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 17.8,
+      "error": ""
+    },
+    {
+      "file": "jimaa_01.jpg",
+      "label": "荔枝蓟马",
+      "pred": "荔枝木虱",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 14.19,
+      "error": ""
+    },
+    {
+      "file": "jimaa_02.jpg",
+      "label": "荔枝蓟马",
+      "pred": "荔枝木虱",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 40.84,
+      "error": ""
+    },
+    {
+      "file": "jimaa_03.jpg",
+      "label": "荔枝蓟马",
+      "pred": "荔枝瘿螨",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 20.35,
+      "error": ""
+    },
+    {
+      "file": "jimaa_04.jpg",
+      "label": "荔枝蓟马",
+      "pred": "荔枝木虱",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 13.43,
+      "error": ""
+    },
+    {
+      "file": "jimaa_05.jpg",
+      "label": "荔枝蓟马",
+      "pred": "无法判断",
+      "confidence": 0.1,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 8.68,
+      "error": ""
+    },
+    {
+      "file": "jinguizi_01.jpg",
+      "label": "荔枝金龟子",
+      "pred": "荔枝金龟子",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 7.4,
+      "error": ""
+    },
+    {
+      "file": "jinguizi_02.jpg",
+      "label": "荔枝金龟子",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 4.7,
+      "error": ""
+    },
+    {
+      "file": "jinguizi_03.jpg",
+      "label": "荔枝金龟子",
+      "pred": "荔枝金龟子",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 7.15,
+      "error": ""
+    },
+    {
+      "file": "jinguizi_04.jpg",
+      "label": "荔枝金龟子",
+      "pred": "荔枝金龟子",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 8.1,
+      "error": ""
+    },
+    {
+      "file": "jinguizi_05.jpg",
+      "label": "荔枝金龟子",
+      "pred": "无法判断",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": false,
+      "elapsed_s": 4.41,
+      "error": ""
+    },
+    {
+      "file": "lichun_01.jpg",
+      "label": "荔枝蝽",
+      "pred": "无法判断",
+      "confidence": 0.5,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 6.13,
+      "error": ""
+    },
+    {
+      "file": "lichun_02.jpg",
+      "label": "荔枝蝽",
+      "pred": "荔枝蝽",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 10.05,
+      "error": ""
+    },
+    {
+      "file": "lichun_03.jpg",
+      "label": "荔枝蝽",
+      "pred": "荔枝蝽",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 10.43,
+      "error": ""
+    },
+    {
+      "file": "lichun_04.jpg",
+      "label": "荔枝蝽",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_false",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 16.66,
+      "error": ""
+    },
+    {
+      "file": "lichun_05.jpg",
+      "label": "荔枝蝽",
+      "pred": "荔枝金龟子",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 9.64,
+      "error": ""
+    },
+    {
+      "file": "meiyanbing_02.jpg",
+      "label": "荔枝煤烟病",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 11.89,
+      "error": ""
+    },
+    {
+      "file": "meiyanbing_03.jpg",
+      "label": "荔枝煤烟病",
+      "pred": "荔枝霜疫霉病",
+      "confidence": 0.6,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": true,
+      "elapsed_s": 23.09,
+      "error": ""
+    },
+    {
+      "file": "meiyanbing_04.jpg",
+      "label": "荔枝煤烟病",
+      "pred": "荔枝煤烟病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_error",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 21.33,
+      "error": ""
+    },
+    {
+      "file": "meiyanbing_08.jpg",
+      "label": "荔枝煤烟病",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 11.51,
+      "error": ""
+    },
+    {
+      "file": "mushi_01.jpg",
+      "label": "荔枝木虱",
+      "pred": "荔枝木虱",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 11.43,
+      "error": ""
+    },
+    {
+      "file": "mushi_02.jpg",
+      "label": "荔枝木虱",
+      "pred": "无法判断",
+      "confidence": 0.1,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 5.39,
+      "error": ""
+    },
+    {
+      "file": "mushi_03.jpg",
+      "label": "荔枝木虱",
+      "pred": "荔枝木虱",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 11.35,
+      "error": ""
+    },
+    {
+      "file": "mushi_04.jpg",
+      "label": "荔枝木虱",
+      "pred": "荔枝木虱",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 11.5,
+      "error": ""
+    },
+    {
+      "file": "mushi_05.jpg",
+      "label": "荔枝木虱",
+      "pred": "荔枝木虱",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_error",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 17.0,
+      "error": ""
+    },
+    {
+      "file": "non_target_01.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 2.13,
+      "error": ""
+    },
+    {
+      "file": "non_target_02.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": false,
+      "elapsed_s": 2.58,
+      "error": ""
+    },
+    {
+      "file": "non_target_03.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 5.54,
+      "error": ""
+    },
+    {
+      "file": "non_target_04.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 3.99,
+      "error": ""
+    },
+    {
+      "file": "non_target_05.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 4.44,
+      "error": ""
+    },
+    {
+      "file": "non_target_06.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 5.2,
+      "error": ""
+    },
+    {
+      "file": "non_target_07.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": false,
+      "elapsed_s": 4.55,
+      "error": ""
+    },
+    {
+      "file": "non_target_08.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 5.15,
+      "error": ""
+    },
+    {
+      "file": "non_target_09.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": false,
+      "elapsed_s": 2.65,
+      "error": ""
+    },
+    {
+      "file": "non_target_10.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 2.42,
+      "error": ""
+    },
+    {
+      "file": "non_target_11.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 3.72,
+      "error": ""
+    },
+    {
+      "file": "non_target_12.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": false,
+      "elapsed_s": 5.8,
+      "error": ""
+    },
+    {
+      "file": "non_target_13.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": false,
+      "elapsed_s": 3.2,
+      "error": ""
+    },
+    {
+      "file": "non_target_14.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 1.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": false,
+      "elapsed_s": 3.69,
+      "error": ""
+    },
+    {
+      "file": "non_target_15.jpg",
+      "label": "非目标",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 3.92,
+      "error": ""
+    },
+    {
+      "file": "shuangyimeibing_02.jpg",
+      "label": "荔枝霜疫霉病",
+      "pred": "荔枝霜疫霉病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 7.39,
+      "error": ""
+    },
+    {
+      "file": "shuangyimeibing_04.jpg",
+      "label": "荔枝霜疫霉病",
+      "pred": "荔枝霜疫霉病",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 11.55,
+      "error": ""
+    },
+    {
+      "file": "shuangyimeibing_05.jpg",
+      "label": "荔枝霜疫霉病",
+      "pred": "荔枝炭疽病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 14.37,
+      "error": ""
+    },
+    {
+      "file": "suanfubing_01.jpg",
+      "label": "荔枝酸腐病",
+      "pred": "荔枝霜疫霉病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 10.46,
+      "error": ""
+    },
+    {
+      "file": "suanfubing_03.jpg",
+      "label": "荔枝酸腐病",
+      "pred": "荔枝霜疫霉病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_error",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 19.45,
+      "error": ""
+    },
+    {
+      "file": "tanjubing_01.jpg",
+      "label": "荔枝炭疽病",
+      "pred": "荔枝霜疫霉病",
+      "confidence": 0.7,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 16.32,
+      "error": ""
+    },
+    {
+      "file": "tanjubing_02.jpg",
+      "label": "荔枝炭疽病",
+      "pred": "健康叶片",
+      "confidence": 0.95,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 8.48,
+      "error": ""
+    },
+    {
+      "file": "tanjubing_03.jpg",
+      "label": "荔枝炭疽病",
+      "pred": "荔枝炭疽病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 17.01,
+      "error": ""
+    },
+    {
+      "file": "tanjubing_04.jpg",
+      "label": "荔枝炭疽病",
+      "pred": "荔枝炭疽病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 16.78,
+      "error": ""
+    },
+    {
+      "file": "tanjubing_05.jpg",
+      "label": "荔枝炭疽病",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 4.26,
+      "error": ""
+    },
+    {
+      "file": "tichengchong_02.jpg",
+      "label": "荔枝蒂蛀虫",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 6.73,
+      "error": ""
+    },
+    {
+      "file": "tichengchong_03.jpg",
+      "label": "荔枝蒂蛀虫",
+      "pred": "荔枝蒂蛀虫",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 10.06,
+      "error": ""
+    },
+    {
+      "file": "tichengchong_04.jpg",
+      "label": "荔枝蒂蛀虫",
+      "pred": "荔枝蒂蛀虫",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 10.07,
+      "error": ""
+    },
+    {
+      "file": "tichengchong_05.jpg",
+      "label": "荔枝蒂蛀虫",
+      "pred": "荔枝蒂蛀虫",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_error",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 17.15,
+      "error": ""
+    },
+    {
+      "file": "xiaohuidie_01.jpg",
+      "label": "荔枝小灰蝶",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_false",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 19.81,
+      "error": ""
+    },
+    {
+      "file": "xiaohuidie_02.jpg",
+      "label": "荔枝小灰蝶",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 3.23,
+      "error": ""
+    },
+    {
+      "file": "xiaohuidie_03.jpg",
+      "label": "荔枝小灰蝶",
+      "pred": "荔枝小灰蝶",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 13.25,
+      "error": ""
+    },
+    {
+      "file": "xiaohuidie_04.jpg",
+      "label": "荔枝小灰蝶",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_false",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 13.56,
+      "error": ""
+    },
+    {
+      "file": "xiaohuidie_05.jpg",
+      "label": "荔枝小灰蝶",
+      "pred": "荔枝蒂蛀虫",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 16.64,
+      "error": ""
+    },
+    {
+      "file": "xiguoyee_01.jpg",
+      "label": "荔枝吸果夜蛾",
+      "pred": "荔枝吸果夜蛾",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 13.81,
+      "error": ""
+    },
+    {
+      "file": "xiguoyee_02.jpg",
+      "label": "荔枝吸果夜蛾",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 12.67,
+      "error": ""
+    },
+    {
+      "file": "xiguoyee_03.jpg",
+      "label": "荔枝吸果夜蛾",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 3.72,
+      "error": ""
+    },
+    {
+      "file": "xiguoyee_04.jpg",
+      "label": "荔枝吸果夜蛾",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 5.75,
+      "error": ""
+    },
+    {
+      "file": "xiguoyee_05.jpg",
+      "label": "荔枝吸果夜蛾",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 6.48,
+      "error": ""
+    },
+    {
+      "file": "yachong_01.jpg",
+      "label": "荔枝蚜虫",
+      "pred": "荔枝蚜虫",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 9.9,
+      "error": ""
+    },
+    {
+      "file": "yachong_02.jpg",
+      "label": "荔枝蚜虫",
+      "pred": "荔枝蚜虫",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 10.0,
+      "error": ""
+    },
+    {
+      "file": "yachong_03.jpg",
+      "label": "荔枝蚜虫",
+      "pred": "荔枝蚜虫",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 11.24,
+      "error": ""
+    },
+    {
+      "file": "yachong_04.jpg",
+      "label": "荔枝蚜虫",
+      "pred": "荔枝蚜虫",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 18.26,
+      "error": ""
+    },
+    {
+      "file": "yachong_05.jpg",
+      "label": "荔枝蚜虫",
+      "pred": "荔枝蚜虫",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 12.94,
+      "error": ""
+    },
+    {
+      "file": "yeyingwen_02.jpg",
+      "label": "荔枝叶瘿蚊",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 13.55,
+      "error": ""
+    },
+    {
+      "file": "yeyingwen_03.jpg",
+      "label": "荔枝叶瘿蚊",
+      "pred": "荔枝瘿螨",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 19.57,
+      "error": ""
+    },
+    {
+      "file": "yeyingwen_04.jpg",
+      "label": "荔枝叶瘿蚊",
+      "pred": "荔枝蒂蛀虫",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 19.39,
+      "error": ""
+    },
+    {
+      "file": "yeyingwen_05.jpg",
+      "label": "荔枝叶瘿蚊",
+      "pred": "荔枝煤烟病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 16.99,
+      "error": ""
+    },
+    {
+      "file": "yingman_01.jpg",
+      "label": "荔枝瘿螨",
+      "pred": "荔枝瘿螨",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_error",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 20.62,
+      "error": ""
+    },
+    {
+      "file": "yingman_02.jpg",
+      "label": "荔枝瘿螨",
+      "pred": "无法判断",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 13.94,
+      "error": ""
+    },
+    {
+      "file": "yingman_03.jpg",
+      "label": "荔枝瘿螨",
+      "pred": "荔枝瘿螨",
+      "confidence": 0.6,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": true,
+      "elapsed_s": 22.17,
+      "error": ""
+    },
+    {
+      "file": "yingman_04.jpg",
+      "label": "荔枝瘿螨",
+      "pred": "荔枝瘿螨",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": true,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 17.61,
+      "error": ""
+    },
+    {
+      "file": "yingman_05.jpg",
+      "label": "荔枝瘿螨",
+      "pred": "荔枝炭疽病",
+      "confidence": 0.6,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": true,
+      "elapsed_s": 16.14,
+      "error": ""
+    },
+    {
+      "file": "zaobanbing_01.jpg",
+      "label": "荔枝藻斑病",
+      "pred": "荔枝煤烟病",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 15.83,
+      "error": ""
+    },
+    {
+      "file": "zaobanbing_02.jpg",
+      "label": "荔枝藻斑病",
+      "pred": "荔枝炭疽病",
+      "confidence": 0.0,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": true,
+      "elapsed_s": 22.25,
+      "error": ""
+    },
+    {
+      "file": "zaobanbing_03.jpg",
+      "label": "荔枝藻斑病",
+      "pred": "无法判断",
+      "confidence": 0.3,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_false",
+      "correct": false,
+      "abstained": true,
+      "low_confidence": true,
+      "elapsed_s": 25.25,
+      "error": ""
+    },
+    {
+      "file": "zaobanbing_04.jpg",
+      "label": "荔枝藻斑病",
+      "pred": "荔枝炭疽病",
+      "confidence": 0.8,
+      "source": "zhipu:glm-4.1v-thinking-flash#confirm_error",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 23.36,
+      "error": ""
+    },
+    {
+      "file": "zaobanbing_05.jpg",
+      "label": "荔枝藻斑病",
+      "pred": "荔枝介壳虫",
+      "confidence": 0.9,
+      "source": "zhipu:glm-4.1v-thinking-flash",
+      "correct": false,
+      "abstained": false,
+      "low_confidence": false,
+      "elapsed_s": 18.65,
+      "error": ""
+    }
+  ]
+}
