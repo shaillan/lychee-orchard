@@ -215,10 +215,20 @@ def _vision_chat(
 
 def _remote_recognize(image_bytes: bytes) -> tuple[str, float, str, str]:
     """首轮识别，返回 (类别, 置信度, 实际命中的模型名, 首轮观察到的证据)。"""
-    content, model = _vision_chat(
-        image_bytes, SYSTEM_PROMPT, "请识别这张荔枝病虫害照片。", temperature=0.1
-    )
-    pest_class, confidence, evidence = _parse_vlm_content(content)
+    # 限流/截断时模型可能只回一个 class 就断了（实测出现过「class=荔枝龟背天牛、
+    # confidence 缺失、1-4 项全无」，被下游误判成 0% 的无法判断）。逐项观察为空
+    # 说明这一轮没说完，不是「图中无异常」，重问一次再下结论。
+    for attempt in range(2):
+        content, model = _vision_chat(
+            image_bytes, SYSTEM_PROMPT, "请识别这张荔枝病虫害照片。", temperature=0.1
+        )
+        pest_class, confidence, evidence = _parse_vlm_content(content)
+        if evidence:
+            break
+        logger.warning(
+            "首轮输出不完整（class=%s, confidence=%s），第 %d 次重试",
+            pest_class, confidence, attempt + 1,
+        )
     pest_class, confidence = _apply_evidence_check(pest_class, confidence, evidence)
     return pest_class, confidence, model, evidence
 
@@ -361,6 +371,24 @@ def _mentions(text: str, keywords) -> bool:
     return False
 
 
+def _negative_clause_count(text: str) -> int:
+    """统计「明确写了没有异常」的短句数（如「形态无卷曲」「无皱缩」「虫体无」）。
+
+    逐项检查的写法是四段阴性描述（「形态无卷曲…；颜色无斑点…；表面无…；虫体无」），
+    里面没有「无病斑/未见异常」这类现成短语，只靠 `_HEALTHY_ABSENT` 会被误杀。
+    """
+    count = 0
+    for clause in re.split(r"[，。；,;\n]", text or ""):
+        clause = clause.strip()
+        if not clause:
+            continue
+        if any(m in clause for m in _NEGATIVE_MARKERS) and not _mentions(
+            clause, _DISEASE_KEYWORDS + _INSECT_KEYWORDS
+        ):
+            count += 1
+    return count
+
+
 def _apply_evidence_check(pest_class: str, confidence: float, evidence: str) -> tuple[str, float]:
     """结论必须有可见证据支撑，否则降级为「无法判断」。
 
@@ -380,6 +408,10 @@ def _apply_evidence_check(pest_class: str, confidence: float, evidence: str) -> 
         disease_reported = _mentions(text, _DISEASE_KEYWORDS)
         insect_reported = _mentions(text, _INSECT_KEYWORDS)
         says_absent = any(m in text for m in _HEALTHY_ABSENT)
+        # 「形态无卷曲…；颜色无斑点…；表面无…；虫体无」这类逐项阴性描述同样算
+        # 明确写了没有异常；只有一两句或含糊时才要求出现现成的阴性短语。
+        if not says_absent and _negative_clause_count(text) >= 2:
+            says_absent = True
         if disease_reported or insect_reported or not says_absent:
             logger.warning(
                 "模型给出 %s（健康），但 evidence 不支持（%r），已降级为无法判断",
@@ -401,11 +433,15 @@ def _apply_evidence_check(pest_class: str, confidence: float, evidence: str) -> 
 
 
 # ---------------------------------------------------------------------------
-# 二次确认：病虫害结论必须经得起「换个问法再问一次」
-# ---------------------------------------------------------------------------
+# 二次确认：病虫害结论必须经得起「换个问法再问一次」。
+# 注意：复核不是「教科书的每一条症状都要对上」。实测同一张炭疽病叶片，按「褐色凹陷病斑、
+# 边缘晕圈、中央小黑点」逐项严卡时，4 次里会拒 1~2 次，导致正确结果被降级成无法判断；
+# 改成「看到任意一项典型症状，且没有更合理的非病害解释」后，同一张图 3/3 通过，
+# 而健康叶片 / 健康果实仍然 2/2 拒绝。病程早期本来就不会把全部症状长齐。
 CONFIRM_SYSTEM_PROMPT = (
     "你是荔枝病虫害复核员。只根据图片核实第一轮记录的异常是否真实存在，不要臆测，"
     "也不要因为类别名称就脑补出画面里没有的东西。"
+    "不要要求所有典型症状同时出现：症状随病程阶段不同只表现一部分是正常的。"
     "必须只输出一个 JSON 对象，不要 markdown、解释或多余文字。\n"
     "字段：\n"
     "1. observed：逐项核实结果，写明每一项看到的实际情况，30-60 字。\n"
@@ -431,17 +467,18 @@ def _confirm_user_text(pest_class: str, info: dict, evidence: str = "") -> str:
         "3) 表面有无霉层、白粉、霜状物、煤污、蜡粉或虫粪？",
         "4) 画面任何位置（枝干、花穗、叶面、叶背）有无昆虫或其幼虫、卵、蛹？",
     ]
+    # 不再要求「全部典型症状」：叶片/果实的病程阶段不同，只会表现其中一部分。
+    # 只要有一项能对上、且不能被水珠/反光/天然纹理等解释，就应当保留首轮结论。
+    lines.append(
+        "判定规则：只要看到上述典型症状中的任意一项（不必全部出现），且这些异常不能被水珠、"
+        "反光、果皮天然纹理、机械伤、自然老化等非病害原因解释，present 填 true。"
+        "症状随病程阶段不同只表现一部分是正常的，不要因为缺少某一项典型症状就填 false。"
+        "只有画面确实没有异常、或异常明显更符合另一个类别时，才填 false。"
+    )
     if kind == "虫害":
-        # 虫害照片经常只拍虫体不拍为害状，只看「症状」会把正确的虫体识别误杀。
+        # 虫害照片经常只拍虫体不拍为害状，只按「症状」卡会把正确的虫体识别误杀。
         lines.append(
-            "判定规则：第 4 项确实看到该害虫的虫体，或第 1-3 项确认了与上述典型症状"
-            "一致的为害状（卷曲、畸形、蛀孔、虫粪等），present 填 true；"
-            "四项都没有发现异常才填 false。"
-        )
-    else:
-        lines.append(
-            "判定规则：第 1-3 项确认了与上述典型症状一致的病征，present 填 true；"
-            "四项都没有发现异常才填 false。"
+            "虫害补充：第 4 项确实看到该害虫的虫体时直接填 true，即使没有明显为害状。"
         )
     lines.append('严格输出 JSON：{"observed":"...","present":true,"reason":"..."}')
     return "\n".join(lines)
@@ -645,6 +682,11 @@ def recognize(image_bytes: bytes, plot_id: int | None = None,
     if source.startswith("cloud_failed"):
         suggestion["warnings"].append(
             "云端识别服务暂时不可用，本次没有给出结论，请检查网络后重新拍照识别。"
+        )
+    elif pest_class == "无法判断" and confidence == 0.0:
+        # 两轮都只拿到半截输出（限流时常见），别把「模型没说完」说成「图里没病」。
+        suggestion["warnings"].append(
+            "本次云端返回不完整，可能是调用被限流，请稍后重新识别。"
         )
     suggestion["verification"] = verification
     return {
