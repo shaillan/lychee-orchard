@@ -167,6 +167,8 @@
     $('#content').classList.toggle('no-tab', !isTab);
     $('#navBack').classList.toggle('hidden', isTab);
     $('#navTitle').textContent = TITLES[view] || '智慧果园管家';
+    $('#navbar').classList.toggle('home', view === 'todo');
+    $('#navSubtitle').classList.toggle('hidden', view !== 'todo');
     $$('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === view));
 
     stopVoice();
@@ -216,17 +218,15 @@
     const el = $('#view-todo');
     const bigFont = localStorage.getItem('fontLarge') === '1';
     el.innerHTML = `
-      <div class="hero">
-        <div class="hero-title">智慧果园管家</div>
-        <div class="hero-sub">东风荔枝果园 · 从田间到餐桌</div>
-      </div>
-
       <div class="quick">
-        <div class="quick-item" onclick="quickScan()"><span class="qi">⌗</span><span>扫码溯源</span></div>
+        <a class="quick-item" href="/dashboard"><span class="qi">📊</span><span>数据看板</span></a>
         <div class="quick-item" onclick="go('batches')"><span class="qi">▣</span><span>批次二维码</span></div>
-        <div class="quick-item" onclick="go('trace')"><span class="qi">⌕</span><span>输入溯源码</span></div>
+        <a class="quick-item" href="/trace"><span class="qi">⌕</span><span>品质溯源</span></a>
         <div class="quick-item" onclick="go('kb')"><span class="qi">📚</span><span>知识库</span></div>
       </div>
+
+      <div class="h2">今日待办</div>
+      <div id="todoList" class="muted small">加载中…</div>
 
       <div class="card">
         <div class="kv" style="align-items:center;border-bottom:none;padding:0">
@@ -251,10 +251,7 @@
         </div>
         <div class="btn block" id="regionBtn" onclick="saveRegion()">保存地区</div>
         <div id="regionMsg" class="mt"></div>
-      </div>
-
-      <div class="h2">今日待办</div>
-      <div id="todoList" class="muted small">加载中…</div>`;
+      </div>`;
 
     $('#fontSwitch').onchange = e => {
       const on = e.target.checked;

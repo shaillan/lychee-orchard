@@ -173,7 +173,7 @@ button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* 看板桌面外壳 */
 .dash-shell { max-width: 1200px; margin: 0 auto; padding: 20px; }
-.dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.dash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
 .dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 900px) {
   .dash-grid { grid-template-columns: repeat(2, 1fr); }
